@@ -9,7 +9,7 @@ annotation class Command(
     val hidden: Boolean = false
 )
 
-interface Module: AutoCloseable {
+interface Module : AutoCloseable {
     suspend fun initialize(jda: JDA) = Unit
     override fun close() = Unit
 }
@@ -19,7 +19,7 @@ data class CommandContext(
     val handlers: List<Pair<Any, KFunction<*>>>
 )
 
-suspend fun dispatch(handlers: List<Pair<Any, KFunction<*>>>, context:CommandContext, command: String, args: String) {
+suspend fun dispatch(handlers: List<Pair<Any, KFunction<*>>>, context: CommandContext, command: String, args: String) {
     val handler = handlers.firstOrNull { (_, function) -> function.name == command } ?: run {
         System.err.println("No handler for command $command")
         return
