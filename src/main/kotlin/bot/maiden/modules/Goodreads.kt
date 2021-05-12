@@ -28,13 +28,55 @@ object Goodreads : Module {
 
         val tagTransformed = tag.replace(Regex("\\s+"), "-").lowercase()
 
-        val uri = URI.create("https://www.goodreads.com/quotes/tag/${urlencode(tagTransformed)}")
-        val page = http.sendAsync(
-            HttpRequest.newBuilder(uri).GET().build(),
+        val baseUrl = "https://www.goodreads.com/quotes/tag/${urlencode(tagTransformed)}"
+        val firstPage = http.sendAsync(
+            HttpRequest.newBuilder(URI.create(baseUrl)).GET().build(),
             HttpResponse.BodyHandlers.ofString(Charsets.UTF_8)
         ).await().body()
 
-        val document = Jsoup.parse(page, uri.toString())
+        val firstDocument = Jsoup.parse(firstPage, baseUrl)
+
+        val showingText = firstDocument.selectFirst(".leftContainer span.smallText").text()
+        val (perPage, total) =
+            showingText
+                .substringAfter("-")
+                .trim()
+                .split(" of ")
+                .map { it.trim().replace(",", "").toIntOrNull() }
+
+        if (perPage == null || total == null) {
+            context.message.channel.sendMessage(
+                """
+                    Something went wrong while trying to parse Goodreads.
+                    This might indicate that the site has updated its markup, or that something else has gone wrong.
+                    
+                    I'd appreciate it if you could notify the author (`m!help`). Thanks :smile:
+                """.trimIndent()
+            ).await()
+
+            return
+        }
+
+        if (total == 0) {
+            context.message.channel.sendMessage("There are no quotes with that tag").await()
+            return
+        }
+
+        val index = (0 until total).random()
+        val chosenPage = index / perPage
+        val chosenOffset = index % perPage
+
+        val document =
+            if (chosenPage == 0) firstDocument
+            else {
+                val pageUrl = "$baseUrl?page=${chosenPage}"
+                val body = http.sendAsync(
+                    HttpRequest.newBuilder(URI.create(pageUrl)).GET().build(),
+                    HttpResponse.BodyHandlers.ofString(Charsets.UTF_8)
+                ).await().body()
+
+                Jsoup.parse(body, pageUrl)
+            }
 
         val quotes = mutableListOf<Quote>()
 
@@ -60,7 +102,7 @@ object Goodreads : Module {
             val authorUrl = quote.selectFirst(".quoteDetails a.leftAlignedImage")
                 ?.attr("abs:href")?.takeIf { it.isNotBlank() }
 
-            val text = buildString {
+            var text = buildString {
                 var newlines = 0
 
                 for (child in element.childNodes()) {
@@ -79,7 +121,9 @@ object Goodreads : Module {
                 }
             }
 
-            if (text.length >= 2048) continue
+            if (text.length >= 2048) {
+                text = "${text.dropLast(2)} …"
+            }
 
             quotes.add(
                 Quote(
@@ -94,7 +138,7 @@ object Goodreads : Module {
 
         if (quotes.isEmpty()) context.message.channel.sendMessage("There are no quotes with that tag").await()
         else {
-            val quote = quotes.random()
+            val quote = quotes[chosenOffset]
 
             context.message.channel.sendMessage(
                 EmbedBuilder()
@@ -104,7 +148,7 @@ object Goodreads : Module {
                     }
                     .setAuthor(quote.author ?: "Anonymous", quote.authorUrl)
                     .setDescription(quote.text)
-                    .setFooter("Requested by ${context.message.author.asTag}")
+                    .setFooter("#${index + 1} of $total | Requested by ${context.message.author.asTag}")
                     .setTimestamp(Instant.now())
                     .build()
             ).await()
