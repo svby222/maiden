@@ -36,7 +36,10 @@ object Goodreads : Module {
 
         val tagTransformed = tag.replace(Regex("\\s+"), "-").lowercase()
 
-        val baseUrl = "https://www.goodreads.com/quotes/tag/${urlencode(tagTransformed)}"
+        val tagEncoded = urlencode(filterLatin(tagTransformed))
+        if (tagEncoded.isBlank()) return fail()
+
+        val baseUrl = "https://www.goodreads.com/quotes/tag/$tagEncoded"
         val firstPage = http.sendAsync(
             HttpRequest.newBuilder(URI.create(baseUrl)).GET().build(),
             HttpResponse.BodyHandlers.ofString(Charsets.UTF_8)
@@ -44,7 +47,7 @@ object Goodreads : Module {
 
         val firstDocument = Jsoup.parse(firstPage, baseUrl)
 
-        val showingText = firstDocument.selectFirst(".leftContainer span.smallText").text()
+        val showingText = firstDocument.selectFirst(".leftContainer span.smallText")?.text() ?: return fail()
         val (perPage, total) =
             showingText
                 .substringAfter("-")

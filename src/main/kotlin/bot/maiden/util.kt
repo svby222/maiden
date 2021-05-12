@@ -8,6 +8,8 @@ import kotlin.coroutines.suspendCoroutine
 
 suspend fun <T> RestAction<T>.await() = suspendCoroutine<T> { cont -> queue { cont.resume(it) } }
 
+fun filterLatin(text: String) = text.replace(Regex("\\P{InBasic_Latin}"), "")
+
 fun urlencode(text: String) = URLEncoder.encode(text, Charsets.UTF_8)
 
 fun Duration.toPrettyString(): String {
