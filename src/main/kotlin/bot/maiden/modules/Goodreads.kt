@@ -110,14 +110,38 @@ object Goodreads : Module {
             val authorUrl = quote.selectFirst(".quoteDetails a.leftAlignedImage")
                 ?.attr("abs:href")?.takeIf { it.isNotBlank() }
 
+            fun processEmphasis(element: Element): String {
+                return buildString {
+                    val markup = mutableListOf<String>()
+                    when (element.tagName().lowercase()) {
+                        "i", "em" -> markup.add("_")
+                        "b", "strong" -> markup.add("**")
+                        "u" -> markup.add("__")
+                        else -> return ""
+                    }
+
+                    append(markup.reversed().joinToString(""))
+                    for (child in element.childNodes()) {
+                        if (child is TextNode) append(child.text())
+                        else if (child is Element) append(processEmphasis(child))
+                    }
+                    append(markup.joinToString(""))
+                }
+            }
+
             var text = buildString {
                 var newlines = 0
 
                 for (child in element.childNodes()) {
-                    if (child is Element && child.tagName().equals("br", ignoreCase = true)) {
-                        if (newlines < 2) {
-                            newlines++
-                            appendLine()
+                    if (child is Element) {
+                        if (child.tagName().lowercase() == "br") {
+                            if (newlines < 2) {
+                                newlines++
+                                appendLine()
+                            }
+                        } else {
+                            newlines = 0
+                            append(processEmphasis(child))
                         }
                     } else if (child is TextNode) {
                         val text = child.text().trim()
