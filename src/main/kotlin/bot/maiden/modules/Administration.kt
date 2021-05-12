@@ -84,17 +84,16 @@ object Administration : Module {
                     `m!invite`
                 """.trimIndent(), false
                 )
-                .apply {
-                    addField(
-                        "Environment information", """
-                        Running on ${System.getProperty("os.name")} ${System.getProperty("os.version")}
-                        Kotlin ${KotlinVersion.CURRENT} on JDK ${System.getProperty("java.version")}
+                .addField(
+                    "Environment information", """
+                    Running on ${System.getProperty("os.name")} ${System.getProperty("os.version")}
+                    Kotlin ${KotlinVersion.CURRENT} on JDK ${System.getProperty("java.version")}
 
-                        **Uptime**: ${Duration.ofMillis(System.currentTimeMillis() - START_TIMESTAMP).toPrettyString()}
-                        **Server count**: ${context.message.jda.guilds.size}
-                    """.trimIndent(), false
-                    )
-                }
+                    **Uptime**: ${Duration.ofMillis(System.currentTimeMillis() - START_TIMESTAMP).toPrettyString()}
+                    **Server count**: ${context.message.jda.guilds.size}
+                """.trimIndent(), true
+                )
+                .addField("Source repository", "[github:musubii/maiden](https://github.com/musubii/maiden)", true)
                 .setFooter("Requested by ${context.message.author.asTag}")
                 .setTimestamp(Instant.now())
                 .build()
