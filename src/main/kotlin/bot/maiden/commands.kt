@@ -5,6 +5,10 @@ import net.dv8tion.jda.api.entities.Message
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 
+annotation class Command(
+    val hidden: Boolean = false
+)
+
 interface Module: AutoCloseable {
     suspend fun initialize(jda: JDA) = Unit
     override fun close() = Unit

@@ -1,5 +1,6 @@
 package bot.maiden.modules
 
+import bot.maiden.Command
 import bot.maiden.CommandContext
 import bot.maiden.Module
 import bot.maiden.await
@@ -14,6 +15,7 @@ import java.time.Instant
 object Inspirobot : Module {
     val http = HttpClient.newHttpClient()
 
+    @Command
     suspend fun inspire(context: CommandContext, ignore: String) {
         val url = http
             .sendAsync(

@@ -1,9 +1,6 @@
 package bot.maiden.modules
 
-import bot.maiden.CommandContext
-import bot.maiden.Module
-import bot.maiden.await
-import bot.maiden.urlencode
+import bot.maiden.*
 import kotlinx.coroutines.future.await
 import net.dv8tion.jda.api.EmbedBuilder
 import org.jsoup.Jsoup
@@ -18,6 +15,7 @@ import java.time.Instant
 object Goodreads : Module {
     val http = HttpClient.newHttpClient()
 
+    @Command
     suspend fun quote(context: CommandContext, tag: String) {
         data class Quote(
             val text: String,

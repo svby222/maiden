@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.functions
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
 import kotlin.system.exitProcess
 
@@ -34,6 +35,7 @@ fun main(args: Array<String>) {
         Goodreads
     )
         .flatMap { `object` -> `object`::class.functions.map { function -> Pair(`object`, function) } }
+        .filter { (_, function) -> function.hasAnnotation<Command>() }
         .filter { (_, function) -> function.isSuspend }
         .filter { (_, function) ->
             function.parameters

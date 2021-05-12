@@ -5,10 +5,12 @@ import net.dv8tion.jda.api.EmbedBuilder
 import java.awt.Color
 import java.time.Duration
 import java.time.Instant
+import kotlin.reflect.full.findAnnotation
 
 object Administration : Module {
     const val OWNER_ID = 829795781715951697L
 
+    @Command(hidden = true)
     suspend fun say(context: CommandContext, text: String) {
         if (context.message.author.idLong == OWNER_ID) {
             context.message.delete().await()
@@ -18,6 +20,7 @@ object Administration : Module {
         }
     }
 
+    @Command(hidden = true)
     suspend fun sayin(context: CommandContext, query: String) {
         val splitIndex = query.indexOf(' ')
         val gc = query.substring(0, splitIndex).trim()
@@ -37,6 +40,7 @@ object Administration : Module {
         }
     }
 
+    @Command
     suspend fun invite(context: CommandContext, ignore: String) {
         context.message.channel.sendMessage(
             EmbedBuilder()
@@ -51,6 +55,7 @@ object Administration : Module {
         ).await()
     }
 
+    @Command
     suspend fun help(context: CommandContext, ignore: String) {
         val ownerUser = context.message.jda.retrieveUserById(OWNER_ID).await()
 
@@ -96,6 +101,7 @@ object Administration : Module {
         ).await()
     }
 
+    @Command
     suspend fun commands(context: CommandContext, ignore: String) {
         // TODO char limit
         context.message.channel.sendMessage(
@@ -106,6 +112,9 @@ object Administration : Module {
                     setDescription(
                         buildString {
                             for ((_, function) in context.handlers) {
+                                val annotation = function.findAnnotation<Command>() ?: continue
+                                if (annotation.hidden) continue
+
                                 appendLine("`${function.name}`")
                             }
                         }
