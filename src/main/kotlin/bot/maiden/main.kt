@@ -60,7 +60,7 @@ fun main(args: Array<String>) {
                             } else {
                                 val content = event.message.contentRaw
 
-                                if (content.startsWith("m!")) {
+                                if (content.startsWith("m!", ignoreCase = true)) {
                                     val unprefixed = content.substring(2).trim()
 
                                     val spaceIndex = unprefixed.indexOf(' ')
