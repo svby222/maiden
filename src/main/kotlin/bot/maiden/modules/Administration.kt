@@ -59,7 +59,13 @@ object Administration : Module {
                 .setColor(Color.WHITE)
                 .setTitle("About ${context.message.jda.selfUser.name}")
                 .setImage("https://i.imgur.com/S4MOq1f.png")
-                .setDescription("Hi! I'm a bot made by `${ownerUser.asTag}` (${ownerUser.asMention}).")
+                .setDescription(
+                    """
+                    Hi! I'm a bot made by `${ownerUser.asTag}` (${ownerUser.asMention}).
+                    
+                    This bot is currently self-hosted, so there may be downtime, but I'll try my best to keep it running. It's also very much a work in progress, so you can check back for new additions if you want.
+                """.trimIndent()
+                )
                 .addField("Command prefix", "`m!`", true)
                 .addField(
                     "Invite link",
