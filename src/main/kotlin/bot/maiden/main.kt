@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.JDABuilder
+import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageType
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.ReadyEvent
@@ -50,6 +51,7 @@ fun main(args: Array<String>) {
                     when (event) {
                         is ReadyEvent -> {
                             println("Ready")
+                            event.jda.presence.activity = Activity.listening("m!help")
                         }
                         is MessageReceivedEvent -> {
                             if (event.message.type == MessageType.INLINE_REPLY && event.message.referencedMessage?.author?.idLong == event.jda.selfUser.idLong) {
