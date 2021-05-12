@@ -7,11 +7,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.dv8tion.jda.api.JDABuilder
+import net.dv8tion.jda.api.entities.MessageType
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
-import java.net.http.HttpClient
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.functions
 import kotlin.reflect.jvm.jvmErasure
@@ -50,19 +50,25 @@ fun main(args: Array<String>) {
                             println("Ready")
                         }
                         is MessageReceivedEvent -> {
-                            val content = event.message.contentRaw
-                            if (content.startsWith("m!")) {
-                                val unprefixed = content.substring(2).trim()
+                            if (event.message.type == MessageType.INLINE_REPLY && event.message.referencedMessage?.author?.idLong == event.jda.selfUser.idLong) {
+                                println("User ${event.message.author.asTag} replied to ${event.message.referencedMessage?.idLong}: ${event.message.contentRaw} (${event.message.guild.idLong}/${event.message.channel.idLong})")
+                            } else {
+                                val content = event.message.contentRaw
 
-                                val spaceIndex = unprefixed.indexOf(' ')
+                                if (content.startsWith("m!")) {
+                                    val unprefixed = content.substring(2).trim()
 
-                                val (command, args) = if (spaceIndex < 0) {
-                                    Pair(unprefixed, "")
-                                } else {
-                                    Pair(unprefixed.substring(0, spaceIndex), unprefixed.substring(spaceIndex + 1))
+                                    val spaceIndex = unprefixed.indexOf(' ')
+
+                                    val (command, args) = if (spaceIndex < 0) {
+                                        Pair(unprefixed, "")
+                                    } else {
+                                        Pair(unprefixed.substring(0, spaceIndex), unprefixed.substring(spaceIndex + 1))
+                                    }
+
+                                    println("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
+                                    dispatch(commands, CommandContext(event.message, commands), command, args)
                                 }
-
-                                dispatch(commands, CommandContext(event.message, commands), command, args)
                             }
                         }
                     }
