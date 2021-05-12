@@ -13,6 +13,7 @@ import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
+import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
@@ -71,7 +72,27 @@ fun main(args: Array<String>) {
                                     }
 
                                     println("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
-                                    dispatch(commands, CommandContext(event.message, commands), command, args)
+
+                                    try {
+                                        dispatch(commands, CommandContext(event.message, commands), command, args)
+                                    } catch (e: Exception) {
+                                        val wrapped = if (e is InvocationTargetException) (e.cause ?: e) else e
+
+                                        e.printStackTrace()
+                                        event.message.channel.sendMessage(
+                                            failureEmbed(event.jda)
+                                                .appendDescription("`${wrapped::class.simpleName}`: ${wrapped.message}")
+                                                .apply {
+                                                    var next = wrapped
+
+                                                    while (next.cause != null) {
+                                                        next = next.cause ?: continue
+                                                        appendDescription("\ncaused by `${next::class.simpleName}`: ${next.message}")
+                                                    }
+                                                }
+                                                .build()
+                                        ).await()
+                                    }
                                 }
                             }
                         }

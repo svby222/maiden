@@ -26,6 +26,14 @@ object Goodreads : Module {
             val authorUrl: String?,
         )
 
+        suspend fun fail() {
+            context.message.channel.sendMessage(
+                failureEmbed(context.message.jda)
+                    .appendDescription("There are no quotes with the specified tag")
+                    .build()
+            ).await()
+        }
+
         val tagTransformed = tag.replace(Regex("\\s+"), "-").lowercase()
 
         val baseUrl = "https://www.goodreads.com/quotes/tag/${urlencode(tagTransformed)}"
@@ -57,10 +65,7 @@ object Goodreads : Module {
             return
         }
 
-        if (total == 0) {
-            context.message.channel.sendMessage("There are no quotes with that tag").await()
-            return
-        }
+        if (total == 0) return fail()
 
         val index = (0 until total).random()
         val chosenPage = index / perPage
@@ -136,7 +141,7 @@ object Goodreads : Module {
             )
         }
 
-        if (quotes.isEmpty()) context.message.channel.sendMessage("There are no quotes with that tag").await()
+        if (quotes.isEmpty()) return fail()
         else {
             val quote = quotes[chosenOffset]
 

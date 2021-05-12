@@ -126,4 +126,9 @@ object Administration : Module {
                 .build()
         ).await()
     }
+
+    @Command(hidden = true)
+    suspend fun `throw`(context: CommandContext, ignore: String) {
+        throw Exception("Success")
+    }
 }
