@@ -2,6 +2,7 @@ package bot.maiden
 
 import bot.maiden.modules.Administration
 import bot.maiden.modules.Goodreads
+import bot.maiden.modules.Horoscope
 import bot.maiden.modules.Inspirobot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +35,8 @@ fun main(args: Array<String>) {
         Administration,
 
         Inspirobot,
-        Goodreads
+        Goodreads,
+        Horoscope
     )
         .flatMap { `object` -> `object`::class.functions.map { function -> Pair(`object`, function) } }
         .filter { (_, function) -> function.hasAnnotation<Command>() }
