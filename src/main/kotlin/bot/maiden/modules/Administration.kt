@@ -88,6 +88,7 @@ object Administration : Module {
                     "Environment information", """
                     Running on ${System.getProperty("os.name")} ${System.getProperty("os.version")}
                     Kotlin ${KotlinVersion.CURRENT} on JDK ${System.getProperty("java.version")}
+                    ${Database.version ?: "Unknown database"}
 
                     **Uptime**: ${Duration.ofMillis(System.currentTimeMillis() - START_TIMESTAMP).toPrettyString()}
                     **Server count**: ${context.message.jda.guilds.size}

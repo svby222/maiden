@@ -1,9 +1,6 @@
 package bot.maiden.modules
 
-import bot.maiden.Command
-import bot.maiden.CommandContext
-import bot.maiden.await
-import bot.maiden.failureEmbed
+import bot.maiden.*
 import kotlinx.coroutines.future.await
 import net.dv8tion.jda.api.EmbedBuilder
 import org.jsoup.Jsoup
@@ -18,7 +15,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-object Horoscope {
+object Horoscope : Module {
     val http = HttpClient.newHttpClient()
     val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
 

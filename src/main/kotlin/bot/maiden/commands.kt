@@ -12,6 +12,8 @@ annotation class Command(
 interface Module : AutoCloseable {
     suspend fun initialize(jda: JDA) = Unit
     override fun close() = Unit
+
+    suspend fun onMessage(message: Message) = Unit
 }
 
 data class CommandContext(
@@ -19,12 +21,18 @@ data class CommandContext(
     val handlers: List<Pair<Any, KFunction<*>>>
 )
 
-suspend fun dispatch(handlers: List<Pair<Any, KFunction<*>>>, context: CommandContext, command: String, args: String) {
+suspend fun dispatch(
+    handlers: List<Pair<Any, KFunction<*>>>,
+    context: CommandContext,
+    command: String,
+    args: String
+): Boolean {
     val handler = handlers.firstOrNull { (_, function) -> function.name == command } ?: run {
         System.err.println("No handler for command $command")
-        return
+        return false
     }
 
     val (receiver, function) = handler
     function.callSuspend(receiver, context, args)
+    return true
 }

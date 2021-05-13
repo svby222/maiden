@@ -1,9 +1,6 @@
 package bot.maiden
 
-import bot.maiden.modules.Administration
-import bot.maiden.modules.Goodreads
-import bot.maiden.modules.Horoscope
-import bot.maiden.modules.Inspirobot
+import bot.maiden.modules.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -12,6 +9,7 @@ import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageType
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.ReadyEvent
+import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
 import java.lang.reflect.InvocationTargetException
@@ -31,13 +29,17 @@ fun main(args: Array<String>) {
 
     val scope = CoroutineScope(Dispatchers.Default)
 
-    val commands = listOf(
+    val modules = listOf<Module>(
         Administration,
 
         Inspirobot,
         Goodreads,
-        Horoscope
+        Horoscope,
+
+        Phone
     )
+
+    val commands = modules
         .flatMap { `object` -> `object`::class.functions.map { function -> Pair(`object`, function) } }
         .filter { (_, function) -> function.hasAnnotation<Command>() }
         .filter { (_, function) -> function.isSuspend }
@@ -47,6 +49,8 @@ fun main(args: Array<String>) {
                 ?.type?.jvmErasure == CommandContext::class
         }
 
+    Database.init()
+
     JDABuilder.createDefault(token)
         .addEventListeners(object : EventListener {
             override fun onEvent(event: GenericEvent) {
@@ -54,7 +58,15 @@ fun main(args: Array<String>) {
                     when (event) {
                         is ReadyEvent -> {
                             println("Ready")
+
                             event.jda.presence.activity = Activity.listening("m!help")
+
+                            for (guild in event.jda.guilds) {
+                                Database.createGuildEntity(Database.sessionFactory, guild)
+                            }
+                        }
+                        is GuildJoinEvent -> {
+                            Database.createGuildEntity(Database.sessionFactory, event.guild)
                         }
                         is MessageReceivedEvent -> {
                             if (event.message.type == MessageType.INLINE_REPLY && event.message.referencedMessage?.author?.idLong == event.jda.selfUser.idLong) {
@@ -94,7 +106,11 @@ fun main(args: Array<String>) {
                                                 }
                                                 .build()
                                         ).await()
+
+                                        false
                                     }
+                                } else {
+                                    modules.forEach { it.onMessage(event.message) }
                                 }
                             }
                         }
