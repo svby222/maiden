@@ -106,8 +106,6 @@ fun main(args: Array<String>) {
                                                 }
                                                 .build()
                                         ).await()
-
-                                        false
                                     }
                                 } else {
                                     modules.forEach { it.onMessage(event.message) }
