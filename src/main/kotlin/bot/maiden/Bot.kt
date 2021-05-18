@@ -39,11 +39,11 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
         }
     }
 
-    private lateinit var jda: JDA
+    lateinit var jda: JDA
 
     private val scope = CoroutineScope(Dispatchers.Default)
     private val _modules = mutableListOf<Module>()
-    private var _commands = emptyList<Pair<Module, KFunction<*>>>()
+    internal var _commands = emptyList<Pair<Module, KFunction<*>>>()
 
     val modules get() = Collections.unmodifiableList(_modules)
     val commands get() = Collections.unmodifiableList(_commands)
@@ -94,6 +94,9 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                 database.createGuildEntity(event.guild)
             }
             is MessageReceivedEvent -> {
+                // TODO handle DMs at some point? Ignore them for now.
+                if (!event.message.isFromGuild) return
+
                 if (event.message.type == MessageType.INLINE_REPLY && event.message.referencedMessage?.author?.idLong == event.jda.selfUser.idLong) {
                     LOGGER.info("User ${event.message.author.asTag} replied to ${event.message.referencedMessage?.idLong}: ${event.message.contentRaw} (${event.message.guild.idLong}/${event.message.channel.idLong})")
                 } else {
@@ -116,7 +119,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                         LOGGER.info("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
 
                         try {
-                            dispatch(_commands, CommandContext(event.message, this), command, args)
+                            dispatch(_commands, CommandContext.fromMessage(event.message, this), command, args)
                         } catch (e: Exception) {
                             val wrapped = if (e is InvocationTargetException) (e.cause ?: e) else e
 
@@ -136,7 +139,9 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                             ).await()
                         }
                     } else {
-                        _modules.forEach { it.onMessage(event.message) }
+                        for (it in _modules) {
+                            if (!it.onMessage(event.message)) break
+                        }
                     }
                 }
             }

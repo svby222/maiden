@@ -18,13 +18,16 @@ fun main(args: Array<String>) {
     val bot = Bot.create(config)
     bot.addModules(
         listOf(
+            Dialog,
+
             Administration,
+            Schedule,
 
             Inspirobot,
             Goodreads,
             Horoscope,
 
-            Phone
+            Phone,
         )
     )
 

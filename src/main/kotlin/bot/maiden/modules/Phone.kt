@@ -45,13 +45,13 @@ object Phone : Module {
     @Command
     suspend fun call(context: CommandContext, target: String) {
         fun abort() {
-            partners.remove(context.message.guild.idLong)
+            partners.remove(context.guild.idLong)
         }
 
-        val data = context.database.withSession { it.find(GuildData::class.java, context.message.guild.idLong) }
+        val data = context.database.withSession { it.find(GuildData::class.java, context.guild.idLong) }
             ?: run {
-                context.message.channel.sendMessage(
-                    failureEmbed(context.message.jda)
+                context.reply(
+                    failureEmbed(context.jda)
                         .appendDescription(
                             """
                             No GuildData entity found for this guild.
@@ -61,7 +61,7 @@ object Phone : Module {
                         """.trimIndent()
                         )
                         .build()
-                ).await()
+                )
 
                 return abort()
             }
@@ -70,21 +70,18 @@ object Phone : Module {
 
         if (target.isBlank()) {
             // Return phone number
-            context.message.channel
-                .sendMessage(":mobile_phone: Your server's phone number is $sourceNumber")
-                .await()
+            context.reply(":mobile_phone: Your server's phone number is $sourceNumber")
         } else {
             val previous =
-                partners.putIfAbsent(context.message.guild.idLong, PartnerState(ConnectionState.Closed, -1, -1, -1, -1))
+                partners.putIfAbsent(context.guild.idLong, PartnerState(ConnectionState.Closed, -1, -1, -1, -1))
             if (previous != null) {
-                context.message.channel.sendMessage(":mobile_phone: You're already in a call! Hang up with m!hangup.")
-                    .await()
+                context.reply(":mobile_phone: You're already in a call! Hang up with m!hangup.")
                 return
             }
 
             val targetNumber = PhoneNumber(target.filter { it in '0'..'9' })
             if (targetNumber.value.isBlank()) {
-                context.message.channel.sendMessage(":mobile_phone: That's not a valid number.").await()
+                context.reply(":mobile_phone: That's not a valid number.")
             } else {
                 // Find guild
                 val otherGuild = context.database.withSession {
@@ -94,45 +91,40 @@ object Phone : Module {
                 } as? GuildData
 
                 if (otherGuild == null) {
-                    context.message.channel.sendMessage(":mobile_phone: That number doesn't seem to be in use...")
-                        .await()
+                    context.reply(":mobile_phone: That number doesn't seem to be in use...")
                     return abort()
                 }
-                if (otherGuild.guildId == context.message.guild.idLong) {
-                    context.message.channel.sendMessage(":mobile_phone: You can't call yourself!").await()
+                if (otherGuild.guildId == context.guild.idLong) {
+                    context.reply(":mobile_phone: You can't call yourself!")
                     return abort()
                 }
 
-                val recipient = context.message.jda.getGuildById(otherGuild.guildId)
+                val recipient = context.jda.getGuildById(otherGuild.guildId)
                 if (recipient == null) {
-                    context.message.channel.sendMessage(":mobile_phone: That number doesn't seem to be in use...")
-                        .await()
+                    context.reply(":mobile_phone: That number doesn't seem to be in use...")
                     return abort()
                 }
 
                 if (partners[recipient.idLong] != null) {
-                    context.message.channel.sendMessage(":mobile_phone: That number seems to be busy. Try calling back later!")
-                        .await()
+                    context.reply(":mobile_phone: That number seems to be busy. Try calling back later!")
                     return abort()
                 }
 
-                val targetChannel = otherGuild.phoneChannel?.let { context.message.jda.getTextChannelById(it) }
+                val targetChannel = otherGuild.phoneChannel?.let { context.jda.getTextChannelById(it) }
                 if (targetChannel == null) {
-                    context.message.channel
-                        .sendMessage(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
-                        .await()
+                    context.reply(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
                     return abort()
                 }
 
                 val state = PartnerState(
                     ConnectionState.Requested,
-                    context.message.guild.idLong, recipient.idLong,
-                    context.message.channel.idLong, targetChannel.idLong
+                    context.guild.idLong, recipient.idLong,
+                    context.channel.idLong, targetChannel.idLong
                 )
                 partners[state.source] = state
                 partners[state.partner] = state.flip()
 
-                context.message.channel.sendMessage(":mobile_phone: You call $targetNumber...").await()
+                context.reply(":mobile_phone: You call $targetNumber...")
 
                 targetChannel.sendMessage(
                     """
@@ -146,16 +138,16 @@ object Phone : Module {
 
     @Command(hidden = true)
     suspend fun pickup(context: CommandContext, ignore: String) {
-        val currentState = partners[context.message.guild.idLong] ?: return
+        val currentState = partners[context.guild.idLong] ?: return
 
-        if (currentState.connectionState == ConnectionState.RequestedRecipient && currentState.sourceChannel == context.message.channel.idLong) {
+        if (currentState.connectionState == ConnectionState.RequestedRecipient && currentState.sourceChannel == context.channel.idLong) {
             partners.compute(currentState.partner) { _, state -> state?.copy(connectionState = ConnectionState.Active) }
-            partners[context.message.guild.idLong] = currentState.copy(connectionState = ConnectionState.Active)
+            partners[context.guild.idLong] = currentState.copy(connectionState = ConnectionState.Active)
 
-            context.message.channel.sendMessage(":mobile_phone: You picked up the phone.").await()
+            context.reply(":mobile_phone: You picked up the phone.")
 
             // TODO channel doesn't exist?
-            context.message.jda.getTextChannelById(currentState.partnerChannel)
+            context.jda.getTextChannelById(currentState.partnerChannel)
                 ?.sendMessage(":mobile_phone: The other party picked up the phone.")?.await()
                 ?: return
         }
@@ -163,32 +155,31 @@ object Phone : Module {
 
     @Command(hidden = true)
     suspend fun hangup(context: CommandContext, ignore: String) {
-        val oldState = partners.remove(context.message.guild.idLong)
+        val oldState = partners.remove(context.guild.idLong)
         if (oldState != null) partners.remove(oldState.partner)
         else return
 
-        context.message.channel.sendMessage(":mobile_phone: You hung up the phone.").await()
+        context.reply(":mobile_phone: You hung up the phone.")
 
-        context.message.jda.getTextChannelById(oldState.partnerChannel)
+        context.jda.getTextChannelById(oldState.partnerChannel)
             ?.sendMessage(":mobile_phone: The other party hung up the phone.")?.await()
     }
 
     @Command
     suspend fun `set-phone-channel`(context: CommandContext, ignore: String) {
-        if (context.message.author.idLong != OWNER_ID &&
-            context.message.member?.permissions?.contains(Permission.ADMINISTRATOR) != true
+        if (context.requester.idLong != OWNER_ID &&
+            context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
         ) {
             // TODO actual permission handling
-            context.message.channel
-                .sendMessage("You can't do that (not an administrator)").await()
+            context.reply("You can't do that (not an administrator)")
             return
         }
 
-        val channel = context.message.channel as? GuildChannel ?: return
+        val channel = context.channel as? GuildChannel ?: return
 
         context.database.withSession {
             it.beginTransaction().let { tx ->
-                val data = it.find(GuildData::class.java, context.message.guild.idLong)
+                val data = it.find(GuildData::class.java, context.guild.idLong)
                 data.phoneChannel = channel.idLong
 
                 it.save(data)
@@ -198,8 +189,8 @@ object Phone : Module {
                 data
             }
         } ?: run {
-            context.message.channel.sendMessage(
-                failureEmbed(context.message.jda)
+            context.reply(
+                failureEmbed(context.jda)
                     .appendDescription(
                         """
                             No GuildData entity found for this guild.
@@ -209,16 +200,15 @@ object Phone : Module {
                         """.trimIndent()
                     )
                     .build()
-            ).await()
+            )
         }
 
-        context.message.channel
-            .sendMessage(":mobile_phone: <#${channel.idLong}> will now be used to receive incoming calls.").await()
+        context.reply(":mobile_phone: <#${channel.idLong}> will now be used to receive incoming calls.")
     }
 
-    override suspend fun onMessage(message: Message) {
-        if (message.author.isBot) return
-        val state = partners[message.guild.idLong] ?: return
+    override suspend fun onMessage(message: Message): Boolean {
+        if (message.author.isBot) return true
+        val state = partners[message.guild.idLong] ?: return true
 
         if (state.connectionState == ConnectionState.Active && message.channel.idLong == state.sourceChannel) {
             var messageTransformed = message.contentRaw
@@ -238,5 +228,7 @@ object Phone : Module {
                 ?.sendMessage("**${message.author.asTag} says**: $messageTransformed".take(2000))
                 ?.await()
         }
+
+        return true
     }
 }

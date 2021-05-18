@@ -1,14 +1,34 @@
 package bot.maiden.common
 
+import bot.maiden.CommandContext
+import bot.maiden.CommandSource
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.JDA
-import net.dv8tion.jda.api.entities.User
 import java.awt.Color
 import java.time.Instant
 
-fun baseEmbed(requester: User?): EmbedBuilder {
+data class EmbedDefaultAdapters(
+    val footerText: ((String) -> String)? = null
+)
+
+fun baseEmbed(context: CommandContext?, adapters: EmbedDefaultAdapters = EmbedDefaultAdapters()): EmbedBuilder {
     return EmbedBuilder()
-        .apply { requester?.let { setFooter("Requested by ${it.asTag}", it.avatarUrl ?: it.defaultAvatarUrl) } }
+        .apply {
+            if (context != null) {
+                val (footer, avatarUser) = when (context.source) {
+                    CommandSource.User -> Pair("Requested by ${context.requester.asTag}", context.requester)
+                    CommandSource.Scheduled -> Pair("Scheduled by ${context.requester.asTag}", null)
+                    CommandSource.Other -> Pair("", null)
+                }
+
+                val user = context.requester.takeUnless { context.requester.idLong == context.jda.selfUser.idLong }
+
+                setFooter(
+                    (adapters.footerText?.invoke(footer) ?: footer).takeUnless { it.isBlank() },
+                    avatarUser?.avatarUrl ?: avatarUser?.defaultAvatarUrl
+                )
+            }
+        }
         .setTimestamp(Instant.now())
 }
 

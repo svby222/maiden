@@ -1,8 +1,9 @@
 package bot.maiden.modules
 
 import bot.maiden.*
+import bot.maiden.common.EmbedDefaultAdapters
+import bot.maiden.common.baseEmbed
 import kotlinx.coroutines.future.await
-import net.dv8tion.jda.api.EmbedBuilder
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
@@ -27,11 +28,11 @@ object Goodreads : Module {
         )
 
         suspend fun fail() {
-            context.message.channel.sendMessage(
-                failureEmbed(context.message.jda)
+            context.reply(
+                failureEmbed(context.jda)
                     .appendDescription("There are no quotes with the specified tag")
                     .build()
-            ).await()
+            )
         }
 
         val tagTransformed = tag.replace(Regex("\\s+"), "-").lowercase()
@@ -56,14 +57,14 @@ object Goodreads : Module {
                 .map { it.trim().replace(",", "").toIntOrNull() }
 
         if (perPage == null || total == null) {
-            context.message.channel.sendMessage(
+            context.reply(
                 """
                     Something went wrong while trying to parse Goodreads.
                     This might indicate that the site has updated its markup, or that something else has gone wrong.
                     
                     I'd appreciate it if you could notify the author (`m!help`). Thanks :smile:
                 """.trimIndent()
-            ).await()
+            )
 
             return
         }
@@ -172,18 +173,22 @@ object Goodreads : Module {
         else {
             val quote = quotes[chosenOffset]
 
-            context.message.channel.sendMessage(
-                EmbedBuilder()
+            context.reply(
+                baseEmbed(
+                    context,
+                    EmbedDefaultAdapters(
+                        footerText = { "#${index + 1} of $total | $it" }
+                    )
+                )
                     .apply {
                         quote.title?.let { setTitle(it, quote.url) }
                         quote.image?.let { setThumbnail(it) }
                     }
                     .setAuthor(quote.author ?: "Anonymous", quote.authorUrl)
                     .setDescription(quote.text)
-                    .setFooter("#${index + 1} of $total | Requested by ${context.message.author.asTag}")
                     .setTimestamp(Instant.now())
                     .build()
-            ).await()
+            )
         }
     }
 }

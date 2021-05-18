@@ -3,7 +3,6 @@ package bot.maiden.modules
 import bot.maiden.Command
 import bot.maiden.CommandContext
 import bot.maiden.Module
-import bot.maiden.await
 import kotlinx.coroutines.future.await
 import net.dv8tion.jda.api.EmbedBuilder
 import java.net.URI
@@ -25,7 +24,7 @@ object Inspirobot : Module {
                 HttpResponse.BodyHandlers.ofString(Charsets.UTF_8)
             ).await().body()
 
-        context.message.channel.sendMessage(
+        context.reply(
             EmbedBuilder()
                 .setTitle("Your inspiration")
                 .setAuthor(
@@ -34,9 +33,9 @@ object Inspirobot : Module {
                     "https://inspirobot.me/website/images/inspirobot-dark-green.png"
                 )
                 .setImage(url)
-                .setFooter("Requested by ${context.message.author.asTag}")
+                .setFooter("Requested by ${context.requester.asTag}")
                 .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 }

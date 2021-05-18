@@ -1,22 +1,24 @@
 package bot.maiden.modules
 
 import bot.maiden.*
-import net.dv8tion.jda.api.EmbedBuilder
+import bot.maiden.common.baseEmbed
+import net.dv8tion.jda.api.entities.User
 import java.awt.Color
 import java.time.Duration
-import java.time.Instant
 import kotlin.reflect.full.findAnnotation
+
+fun User.isOwner() = idLong == Administration.OWNER_ID
 
 object Administration : Module {
     const val OWNER_ID = 829795781715951697L
 
     @Command(hidden = true)
     suspend fun say(context: CommandContext, text: String) {
-        if (context.message.author.idLong == OWNER_ID) {
-            context.message.delete().await()
-            context.message.channel.sendMessage(text).await()
+        if (context.requester.isOwner()) {
+            context.message?.delete()?.await()
+            context.channel.sendMessage(text).await()
         } else {
-            context.message.channel.sendMessage("${context.message.author.asMention} no")
+            context.reply("${context.requester.asMention} no")
         }
     }
 
@@ -28,41 +30,39 @@ object Administration : Module {
 
         val (guildId, channelId) = gc.split("/").map { it.toLong() }
 
-        val channel = context.message.jda.getGuildById(guildId)?.getTextChannelById(channelId) ?: run {
-            context.message.channel.sendMessage("I can't do that.").await()
+        val channel = context.jda.getGuildById(guildId)?.getTextChannelById(channelId) ?: run {
+            context.reply("I can't do that.")
             return
         }
 
-        if (context.message.author.idLong == OWNER_ID) {
+        if (context.requester.idLong == OWNER_ID) {
             channel.sendMessage(text).await()
         } else {
-            context.message.channel.sendMessage("${context.message.author.asMention} no").await()
+            context.reply("${context.requester.asMention} no")
         }
     }
 
     @Command
     suspend fun invite(context: CommandContext, ignore: String) {
-        context.message.channel.sendMessage(
-            EmbedBuilder()
-                .setTitle("Invite ${context.message.jda.selfUser.name} to your server")
-                .setThumbnail(context.message.jda.selfUser.avatarUrl)
+        context.reply(
+            baseEmbed(context)
+                .setTitle("Invite ${context.jda.selfUser.name} to your server")
+                .setThumbnail(context.jda.selfUser.avatarUrl)
                 .setDescription(
                     "**[Click here](https://discord.com/api/oauth2/authorize?client_id=841947222492577812&permissions=8&scope=bot)**",
                 )
-                .setFooter("Requested by ${context.message.author.asTag}")
-                .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 
     @Command
     suspend fun help(context: CommandContext, ignore: String) {
-        val ownerUser = context.message.jda.retrieveUserById(OWNER_ID).await()
+        val ownerUser = context.jda.retrieveUserById(OWNER_ID).await()
 
-        context.message.channel.sendMessage(
-            EmbedBuilder()
+        context.reply(
+            baseEmbed(context)
                 .setColor(Color.WHITE)
-                .setTitle("About ${context.message.jda.selfUser.name}")
+                .setTitle("About ${context.jda.selfUser.name}")
                 .setImage("https://i.imgur.com/S4MOq1f.png")
                 .setDescription(
                     """
@@ -91,23 +91,21 @@ object Administration : Module {
                     ${context.database.version ?: "Unknown database"}
 
                     **Uptime**: ${Duration.ofMillis(System.currentTimeMillis() - START_TIMESTAMP).toPrettyString()}
-                    **Server count**: ${context.message.jda.guilds.size}
+                    **Server count**: ${context.jda.guilds.size}
                 """.trimIndent(), true
                 )
                 .addField("Source repository", "[github:musubii/maiden](https://github.com/musubii/maiden)", true)
-                .setFooter("Requested by ${context.message.author.asTag}")
-                .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 
     @Command
     suspend fun commands(context: CommandContext, ignore: String) {
         // TODO char limit
-        context.message.channel.sendMessage(
-            EmbedBuilder()
+        context.reply(
+            baseEmbed(context)
                 .setTitle("List of commands")
-                .setThumbnail(context.message.jda.selfUser.avatarUrl)
+                .setThumbnail(context.jda.selfUser.avatarUrl)
                 .apply {
                     setDescription(
                         buildString {
@@ -121,10 +119,8 @@ object Administration : Module {
                     )
                 }
                 .addField("Command prefix", "`m!`", true)
-                .setFooter("Requested by ${context.message.author.asTag}")
-                .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 
     @Command(hidden = true)

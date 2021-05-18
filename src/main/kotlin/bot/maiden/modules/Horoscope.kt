@@ -1,6 +1,9 @@
 package bot.maiden.modules
 
-import bot.maiden.*
+import bot.maiden.Command
+import bot.maiden.CommandContext
+import bot.maiden.Module
+import bot.maiden.failureEmbed
 import kotlinx.coroutines.future.await
 import net.dv8tion.jda.api.EmbedBuilder
 import org.jsoup.Jsoup
@@ -40,11 +43,11 @@ object Horoscope : Module {
     @Command
     suspend fun horoscope(context: CommandContext, sign: String) {
         suspend fun fail() {
-            context.message.channel.sendMessage(
-                failureEmbed(context.message.jda)
+            context.reply(
+                failureEmbed(context.jda)
                     .appendDescription("Invalid sign specified")
                     .build()
-            ).await()
+            )
         }
 
         val index = if (sign.length == 1 && sign[0].code in 9800..9811) sign[0].code - 9800 + 1
@@ -88,14 +91,14 @@ object Horoscope : Module {
                 }
             }
 
-        context.message.channel.sendMessage(
+        context.reply(
             EmbedBuilder()
                 .setTitle(horoscopeCachedDay.format(dateFormatter), url)
                 .setDescription(text)
-                .setFooter("Requested by ${context.message.author.asTag}")
+                .setFooter("Requested by ${context.requester.asTag}")
                 .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 
     var moonCached: Pair<Map<String, String>, String?>? = null
@@ -104,14 +107,14 @@ object Horoscope : Module {
     @Command
     suspend fun moon(context: CommandContext, ignore: String) {
         suspend fun fail() {
-            context.message.channel.sendMessage(
+            context.reply(
                 """
                     Something went wrong while trying to parse moongiant.
                     This might indicate that the site has updated its markup, or that something else has gone wrong.
                     
                     I'd appreciate it if you could notify the author (`m!help`). Thanks :smile:
                 """.trimIndent()
-            ).await()
+            )
         }
 
         val today = LocalDate.now()
@@ -152,7 +155,7 @@ object Horoscope : Module {
             }
         }
 
-        context.message.channel.sendMessage(
+        context.reply(
             EmbedBuilder()
                 .setThumbnail(moonImageUrl)
                 .apply {
@@ -161,10 +164,10 @@ object Horoscope : Module {
                     }
                 }
                 .setTitle(LocalDate.now().format(dateFormatter), url)
-                .setFooter("Requested by ${context.message.author.asTag}")
+                .setFooter("Requested by ${context.requester.asTag}")
                 .setTimestamp(Instant.now())
                 .build()
-        ).await()
+        )
     }
 
     val eightBallAnswers = listOf(
@@ -195,6 +198,6 @@ object Horoscope : Module {
 
     @Command
     suspend fun `8ball`(context: CommandContext, ignore: String) {
-        context.message.reply(":8ball: ${eightBallAnswers.random()}").await()
+        context.reply(":8ball: ${eightBallAnswers.random()}")
     }
 }
