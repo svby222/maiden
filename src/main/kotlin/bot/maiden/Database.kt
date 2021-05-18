@@ -6,9 +6,7 @@ import net.dv8tion.jda.api.entities.Guild
 import org.hibernate.Session
 import org.hibernate.SessionFactory
 import org.hibernate.cfg.Configuration
-import org.hibernate.exception.ConstraintViolationException
 import java.util.*
-import javax.persistence.PersistenceException
 
 class Database(config: Config) {
     lateinit var sessionFactory: SessionFactory
@@ -49,30 +47,23 @@ class Database(config: Config) {
     inline fun <T> withSession(block: (Session) -> T) = sessionFactory.openSession().use(block)
 
     fun createGuildEntity(guild: Guild) {
-        try {
-            withSession { session ->
-                session.beginTransaction().let { tx ->
-                    val newData = GuildData()
-                    newData.guildId = guild.idLong
+        withSession { session ->
+            session.beginTransaction().let { tx ->
+                val guildData = session.find(GuildData::class.java, guild.idLong)
+                    ?: GuildData().apply { guildId = guild.idLong }
 
+                if (guildData.phoneNumber == null) {
                     // Generate a phone number
-                    newData.phoneNumber = buildString {
+                    guildData.phoneNumber = buildString {
                         append(guild.id.take(3))
                         repeat(7) { append(('0'..'9').random().toString()) }
                     }
-
-                    session.save(newData)
-
-                    tx.commit()
                 }
-            }
-        } catch (e: PersistenceException) {
-            if (e.cause is ConstraintViolationException) {
-                // Ignore
-                return
-            } else throw e
-        }
 
-        println("Inserted guild entity for ${guild.idLong}")
+                session.saveOrUpdate(guildData)
+
+                tx.commit()
+            }
+        }
     }
 }
