@@ -22,6 +22,7 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.5.0-RC"
 
     implementation "net.dv8tion:JDA:4.2.1_253"
+    implementation "ch.qos.logback:logback-classic:1.3.0-alpha5"
 
     implementation "com.typesafe:config:1.4.1"
 

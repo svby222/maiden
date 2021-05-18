@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
+import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.*
 import kotlin.reflect.KFunction
@@ -27,6 +28,8 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     lateinit var database: Database
 
     companion object {
+        private val LOGGER = LoggerFactory.getLogger(Bot::class.java)
+
         @JvmStatic
         fun create(config: Config): Bot {
             if (!config.hasPath("maiden.core.discord.botToken"))
@@ -75,7 +78,13 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     private suspend fun onEvent(event: GenericEvent) {
         when (event) {
             is ReadyEvent -> {
-                println("Ready")
+                """
+                    ========================
+                    | READY EVENT RECEIVED |
+                    ========================
+                """.trimIndent()
+                    .lines()
+                    .forEach(LOGGER::info)
 
                 event.jda.presence.activity = Activity.listening("m!help")
 
@@ -86,7 +95,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
             }
             is MessageReceivedEvent -> {
                 if (event.message.type == MessageType.INLINE_REPLY && event.message.referencedMessage?.author?.idLong == event.jda.selfUser.idLong) {
-                    println("User ${event.message.author.asTag} replied to ${event.message.referencedMessage?.idLong}: ${event.message.contentRaw} (${event.message.guild.idLong}/${event.message.channel.idLong})")
+                    LOGGER.info("User ${event.message.author.asTag} replied to ${event.message.referencedMessage?.idLong}: ${event.message.contentRaw} (${event.message.guild.idLong}/${event.message.channel.idLong})")
                 } else {
                     val content = event.message.contentRaw
 
@@ -104,7 +113,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                             )
                         }
 
-                        println("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
+                        LOGGER.info("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
 
                         try {
                             dispatch(_commands, CommandContext(event.message, this), command, args)
