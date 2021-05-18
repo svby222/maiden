@@ -18,8 +18,14 @@ interface Module : AutoCloseable {
 
 data class CommandContext(
     val message: Message,
-    val handlers: List<Pair<Any, KFunction<*>>>
-)
+
+    val bot: Bot,
+) {
+    val modules get() = bot.modules
+    val commands get() = bot.commands
+
+    val database get() = bot.database
+}
 
 suspend fun dispatch(
     handlers: List<Pair<Any, KFunction<*>>>,

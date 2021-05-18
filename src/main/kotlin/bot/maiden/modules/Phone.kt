@@ -1,7 +1,6 @@
 package bot.maiden.modules
 
 import bot.maiden.*
-import bot.maiden.Database.sessionFactory
 import bot.maiden.model.GuildData
 import bot.maiden.model.PhoneNumber
 import bot.maiden.modules.Administration.OWNER_ID
@@ -49,8 +48,7 @@ object Phone : Module {
             partners.remove(context.message.guild.idLong)
         }
 
-        val data = sessionFactory.openSession()
-            .use { it.find(GuildData::class.java, context.message.guild.idLong) }
+        val data = context.database.withSession { it.find(GuildData::class.java, context.message.guild.idLong) }
             ?: run {
                 context.message.channel.sendMessage(
                     failureEmbed(context.message.jda)
@@ -89,12 +87,11 @@ object Phone : Module {
                 context.message.channel.sendMessage(":mobile_phone: That's not a valid number.").await()
             } else {
                 // Find guild
-                val otherGuild = sessionFactory.openSession()
-                    .use {
-                        it.createQuery("from GuildData data where data.phoneNumber = :phoneNumber")
-                            .setParameter("phoneNumber", targetNumber.value)
-                            .uniqueResult()
-                    } as? GuildData
+                val otherGuild = context.database.withSession {
+                    it.createQuery("from GuildData data where data.phoneNumber = :phoneNumber")
+                        .setParameter("phoneNumber", targetNumber.value)
+                        .uniqueResult()
+                } as? GuildData
 
                 if (otherGuild == null) {
                     context.message.channel.sendMessage(":mobile_phone: That number doesn't seem to be in use...")
@@ -189,33 +186,31 @@ object Phone : Module {
 
         val channel = context.message.channel as? GuildChannel ?: return
 
-        sessionFactory.openSession()
-            .use {
-                it.beginTransaction().let { tx ->
-                    val data = it.find(GuildData::class.java, context.message.guild.idLong)
-                    data.phoneChannel = channel.idLong
+        context.database.withSession {
+            it.beginTransaction().let { tx ->
+                val data = it.find(GuildData::class.java, context.message.guild.idLong)
+                data.phoneChannel = channel.idLong
 
-                    it.save(data)
+                it.save(data)
 
-                    tx.commit()
+                tx.commit()
 
-                    data
-                }
+                data
             }
-            ?: run {
-                context.message.channel.sendMessage(
-                    failureEmbed(context.message.jda)
-                        .appendDescription(
-                            """
+        } ?: run {
+            context.message.channel.sendMessage(
+                failureEmbed(context.message.jda)
+                    .appendDescription(
+                        """
                             No GuildData entity found for this guild.
                             This shouldn't happen :frowning:
                             
                             I'd appreciate it if you could notify the author (`m!help`). Thanks :smile:
                         """.trimIndent()
-                        )
-                        .build()
-                ).await()
-            }
+                    )
+                    .build()
+            ).await()
+        }
 
         context.message.channel
             .sendMessage(":mobile_phone: <#${channel.idLong}> will now be used to receive incoming calls.").await()

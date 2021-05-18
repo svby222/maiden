@@ -1,32 +1,33 @@
 package bot.maiden
 
 import bot.maiden.model.GuildData
+import com.typesafe.config.Config
 import net.dv8tion.jda.api.entities.Guild
+import org.hibernate.Session
 import org.hibernate.SessionFactory
 import org.hibernate.cfg.Configuration
 import org.hibernate.exception.ConstraintViolationException
 import java.util.*
 import javax.persistence.PersistenceException
 
-object Database {
+class Database(config: Config) {
     lateinit var sessionFactory: SessionFactory
     var version: String? = null
 
+    private val hibernateProperties = mapOf(
+        "hibernate.connection.url" to config.getString("maiden.core.database.connectionString"),
+        "hibernate.connection.username" to config.getString("maiden.core.database.username"),
+        "hibernate.connection.password" to config.getString("maiden.core.database.password"),
+
+        "hibernate.dialect" to "org.hibernate.dialect.PostgreSQLDialect",
+        "hibernate.connection.driver_class" to "org.postgresql.Driver",
+        "show_sql" to "true",
+    )
+
     fun init() {
-        // TODO This relies on trust authentication (with no password!)
-        // This is bad for obvious reasons, but this is just here for testing purposes.
         // TODO clean up database operations (urgent!)
-        val properties = Properties().apply {
-            putAll(
-                mapOf(
-                    "hibernate.connection.url" to "jdbc:postgresql://localhost/",
-                    "hibernate.connection.username" to "postgres",
-                    "hibernate.dialect" to "org.hibernate.dialect.PostgreSQLDialect",
-                    "hibernate.connection.driver_class" to "org.postgresql.Driver",
-                    "show_sql" to "true",
-                )
-            )
-        }
+
+        val properties = Properties().apply { putAll(hibernateProperties) }
 
         val configuration = Configuration()
             .addProperties(properties)
@@ -35,7 +36,7 @@ object Database {
         val factory = configuration.buildSessionFactory()
         this.sessionFactory = factory
 
-        factory.openSession().use {
+        withSession {
             val query = it.createNativeQuery("select version()")
             val result = query.uniqueResult() as? String
 
@@ -45,9 +46,11 @@ object Database {
         }
     }
 
-    fun createGuildEntity(sessionFactory: SessionFactory, guild: Guild) {
+    inline fun <T> withSession(block: (Session) -> T) = sessionFactory.openSession().use(block)
+
+    fun createGuildEntity(guild: Guild) {
         try {
-            sessionFactory.openSession().use { session ->
+            withSession { session ->
                 session.beginTransaction().let { tx ->
                     val newData = GuildData()
                     newData.guildId = guild.idLong
