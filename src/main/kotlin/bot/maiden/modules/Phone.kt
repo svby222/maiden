@@ -167,6 +167,8 @@ object Phone : Module {
 
     @Command
     suspend fun `set-phone-channel`(context: CommandContext, ignore: String) {
+        context.requester ?: return
+
         if (context.requester.idLong != OWNER_ID &&
             context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
         ) {

@@ -26,7 +26,7 @@ data class CommandContext(
     val source: CommandSource,
 
     val message: Message?,
-    val requester: User,
+    val requester: User?,
     val guild: Guild, // TODO guild should be nullable
     val channel: MessageChannel,
 
@@ -59,7 +59,7 @@ data class CommandContext(
         )
 
         @JvmStatic
-        fun fromScheduled(requester: User, channel: TextChannel, bot: Bot) = CommandContext(
+        fun fromScheduled(requester: User?, channel: TextChannel, bot: Bot) = CommandContext(
             CommandSource.Scheduled,
 
             null,

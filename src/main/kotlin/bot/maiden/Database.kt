@@ -1,6 +1,7 @@
 package bot.maiden
 
 import bot.maiden.model.GuildData
+import bot.maiden.model.GuildScheduledEvent
 import com.typesafe.config.Config
 import net.dv8tion.jda.api.entities.Guild
 import org.hibernate.Session
@@ -30,6 +31,7 @@ class Database(config: Config) {
         val configuration = Configuration()
             .addProperties(properties)
             .addAnnotatedClass(GuildData::class.java)
+            .addAnnotatedClass(GuildScheduledEvent::class.java)
 
         val factory = configuration.buildSessionFactory()
         this.sessionFactory = factory

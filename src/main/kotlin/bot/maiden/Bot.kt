@@ -86,6 +86,9 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                     .lines()
                     .forEach(LOGGER::info)
 
+                _modules.forEach { it.initialize(this) }
+                LOGGER.info("Modules initialized")
+
                 event.jda.presence.activity = Activity.listening("m!help")
 
                 event.jda.guilds.forEach(database::createGuildEntity)
@@ -149,6 +152,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     }
 
     override fun close() {
+        _modules.forEach { it.close() }
         jda.shutdown()
         scope.cancel()
     }

@@ -4,9 +4,12 @@ import net.dv8tion.jda.api.requests.RestAction
 import java.net.URLEncoder
 import java.time.Duration
 import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-suspend fun <T> RestAction<T>.await() = suspendCoroutine<T> { cont -> queue { cont.resume(it) } }
+suspend fun <T> RestAction<T>.await() = suspendCoroutine<T> { cont ->
+    queue({ cont.resume(it) }, { cont.resumeWithException(it) })
+}
 
 fun filterLatin(text: String) = text.replace(Regex("\\P{InBasic_Latin}"), "")
 

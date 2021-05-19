@@ -3,9 +3,9 @@ package bot.maiden.modules
 import bot.maiden.Command
 import bot.maiden.CommandContext
 import bot.maiden.Module
+import bot.maiden.common.baseEmbed
 import bot.maiden.failureEmbed
 import kotlinx.coroutines.future.await
-import net.dv8tion.jda.api.EmbedBuilder
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.nodes.TextNode
@@ -13,7 +13,6 @@ import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
-import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -92,11 +91,9 @@ object Horoscope : Module {
             }
 
         context.reply(
-            EmbedBuilder()
+            baseEmbed(context)
                 .setTitle(horoscopeCachedDay.format(dateFormatter), url)
                 .setDescription(text)
-                .setFooter("Requested by ${context.requester.asTag}")
-                .setTimestamp(Instant.now())
                 .build()
         )
     }
@@ -156,7 +153,7 @@ object Horoscope : Module {
         }
 
         context.reply(
-            EmbedBuilder()
+            baseEmbed(context)
                 .setThumbnail(moonImageUrl)
                 .apply {
                     for ((key, value) in fields) {
@@ -164,8 +161,6 @@ object Horoscope : Module {
                     }
                 }
                 .setTitle(LocalDate.now().format(dateFormatter), url)
-                .setFooter("Requested by ${context.requester.asTag}")
-                .setTimestamp(Instant.now())
                 .build()
         )
     }

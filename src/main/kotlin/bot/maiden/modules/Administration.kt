@@ -14,6 +14,8 @@ object Administration : Module {
 
     @Command(hidden = true)
     suspend fun say(context: CommandContext, text: String) {
+        context.requester ?: return
+
         if (context.requester.isOwner()) {
             context.message?.delete()?.await()
             context.channel.sendMessage(text).await()
@@ -24,6 +26,8 @@ object Administration : Module {
 
     @Command(hidden = true)
     suspend fun sayin(context: CommandContext, query: String) {
+        context.requester ?: return
+
         val splitIndex = query.indexOf(' ')
         val gc = query.substring(0, splitIndex).trim()
         val text = query.substring(splitIndex + 1).trim()

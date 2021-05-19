@@ -15,13 +15,13 @@ fun baseEmbed(context: CommandContext?, adapters: EmbedDefaultAdapters = EmbedDe
     return EmbedBuilder()
         .apply {
             if (context != null) {
+                val requesterName = context.requester?.asTag ?: "unknown user"
+
                 val (footer, avatarUser) = when (context.source) {
-                    CommandSource.User -> Pair("Requested by ${context.requester.asTag}", context.requester)
-                    CommandSource.Scheduled -> Pair("Scheduled by ${context.requester.asTag}", null)
+                    CommandSource.User -> Pair("Requested by $requesterName", context.requester)
+                    CommandSource.Scheduled -> Pair("Scheduled by $requesterName", null)
                     CommandSource.Other -> Pair("", null)
                 }
-
-                val user = context.requester.takeUnless { context.requester.idLong == context.jda.selfUser.idLong }
 
                 setFooter(
                     (adapters.footerText?.invoke(footer) ?: footer).takeUnless { it.isBlank() },
