@@ -95,7 +95,12 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                     .lines()
                     .forEach(LOGGER::info)
 
-                _modules.forEach { it.initialize(this) }
+                LOGGER.info("Initializing modules...")
+                _modules.forEach {
+                    LOGGER.debug("Initializing module ${it::class.qualifiedName}")
+                    it.initialize(this)
+                    LOGGER.info("Initialized module ${it::class.qualifiedName}")
+                }
                 LOGGER.info("Modules initialized")
 
                 event.jda.presence.activity = Activity.listening("m!help")
