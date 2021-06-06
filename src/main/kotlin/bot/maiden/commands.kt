@@ -55,7 +55,7 @@ data class CommandContext(
 
             bot,
 
-            { message.reply(it).await() }
+            { message.reply(it).mentionRepliedUser(false).await() }
         )
 
         @JvmStatic
