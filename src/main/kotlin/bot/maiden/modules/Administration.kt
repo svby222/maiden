@@ -7,16 +7,14 @@ import java.awt.Color
 import java.time.Duration
 import kotlin.reflect.full.findAnnotation
 
-fun User.isOwner() = idLong == Administration.OWNER_ID
+fun User.isOwner(bot: Bot) = idLong == bot.ownerId
 
 object Administration : Module {
-    const val OWNER_ID = 829795781715951697L
-
     @Command(hidden = true)
     suspend fun say(context: CommandContext, text: String) {
         context.requester ?: return
 
-        if (context.requester.isOwner()) {
+        if (context.requester.isOwner(context.bot)) {
             context.message?.delete()?.await()
             context.channel.sendMessage(text).await()
         } else {
@@ -39,7 +37,7 @@ object Administration : Module {
             return
         }
 
-        if (context.requester.idLong == OWNER_ID) {
+        if (context.requester.isOwner(context.bot)) {
             channel.sendMessage(text).await()
         } else {
             context.reply("${context.requester.asMention} no")
@@ -61,7 +59,7 @@ object Administration : Module {
 
     @Command
     suspend fun help(context: CommandContext, ignore: String) {
-        val ownerUser = context.jda.retrieveUserById(OWNER_ID).await()
+        val ownerUser = context.jda.retrieveUserById(context.bot.ownerId).await()
 
         context.reply(
             baseEmbed(context)
@@ -125,6 +123,15 @@ object Administration : Module {
                 .addField("Command prefix", "`m!`", true)
                 .build()
         )
+    }
+
+    @Command(hidden = true)
+    fun `set-motd`(context: CommandContext, motd: String) {
+        context.requester ?: return
+
+        if (context.requester.isOwner(context.bot)) {
+            context.bot.motd = motd.takeUnless { it.isBlank() }
+        }
     }
 
     @Command(hidden = true)

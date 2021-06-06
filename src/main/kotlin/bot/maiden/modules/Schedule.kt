@@ -119,7 +119,7 @@ object Schedule : Module {
 
         context.requester ?: return
 
-        if (!context.requester.isOwner()) {
+        if (!context.requester.isOwner(context.bot)) {
             context.reply("This command is unfinished and is currently only usable by the bot owner")
             return
         }

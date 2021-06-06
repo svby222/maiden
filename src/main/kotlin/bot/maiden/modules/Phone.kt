@@ -3,7 +3,6 @@ package bot.maiden.modules
 import bot.maiden.*
 import bot.maiden.model.GuildData
 import bot.maiden.model.PhoneNumber
-import bot.maiden.modules.Administration.OWNER_ID
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.GuildChannel
 import net.dv8tion.jda.api.entities.Message
@@ -169,7 +168,7 @@ object Phone : Module {
     suspend fun `set-phone-channel`(context: CommandContext, ignore: String) {
         context.requester ?: return
 
-        if (context.requester.idLong != OWNER_ID &&
+        if (!context.requester.isOwner(context.bot) &&
             context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
         ) {
             // TODO actual permission handling

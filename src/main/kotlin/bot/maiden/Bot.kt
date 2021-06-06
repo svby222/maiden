@@ -17,15 +17,25 @@ import net.dv8tion.jda.api.hooks.EventListener
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.*
+import kotlin.properties.Delegates
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
 
+private val DEFAULT_STATUS = "m!help"
+
 class Bot private constructor(config: Config, private val token: String) : AutoCloseable {
     val config = config.withoutPath("maiden.core.discord.botToken")
     lateinit var database: Database
+
+    val ownerId by lazy { config.getLong("maiden.core.ownerId") }
+
+    var motd: String? by Delegates.observable(null) { _, _, value ->
+        value?.let { jda.presence.activity = Activity.listening("$DEFAULT_STATUS | $it") }
+            ?: run { jda.presence.activity = Activity.listening(DEFAULT_STATUS) }
+    }
 
     companion object {
         private val LOGGER = LoggerFactory.getLogger(Bot::class.java)
@@ -55,7 +65,6 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
         _commands = this._modules
             .flatMap { `object` -> `object`::class.functions.map { function -> Pair(`object`, function) } }
             .filter { (_, function) -> function.hasAnnotation<Command>() }
-            .filter { (_, function) -> function.isSuspend }
             .filter { (_, function) ->
                 function.parameters
                     .firstOrNull { it.kind == KParameter.Kind.VALUE }
