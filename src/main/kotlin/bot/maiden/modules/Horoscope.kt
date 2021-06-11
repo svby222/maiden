@@ -19,7 +19,7 @@ import java.time.format.FormatStyle
 
 object Horoscope : Module {
     val http = HttpClient.newHttpClient()
-    val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.LONG)
+    val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
 
     val horoscopeCached = Array<String?>(12) { null }
     var horoscopeCachedDay = LocalDate.now()
