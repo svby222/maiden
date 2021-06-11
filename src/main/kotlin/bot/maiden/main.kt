@@ -28,6 +28,7 @@ fun main(args: Array<String>) {
             Horoscope,
 
             Phone,
+            Dectalk,
         )
     )
 
