@@ -28,7 +28,7 @@ object Goodreads : Module {
         )
 
         suspend fun fail() {
-            context.reply(
+            context.replyAsync(
                 failureEmbed(context.jda)
                     .appendDescription("There are no quotes with the specified tag")
                     .build()
@@ -57,7 +57,7 @@ object Goodreads : Module {
                 .map { it.trim().replace(",", "").toIntOrNull() }
 
         if (perPage == null || total == null) {
-            context.reply(
+            context.replyAsync(
                 """
                     Something went wrong while trying to parse Goodreads.
                     This might indicate that the site has updated its markup, or that something else has gone wrong.
@@ -173,7 +173,7 @@ object Goodreads : Module {
         else {
             val quote = quotes[chosenOffset]
 
-            context.reply(
+            context.replyAsync(
                 baseEmbed(
                     context,
                     EmbedDefaultAdapters(

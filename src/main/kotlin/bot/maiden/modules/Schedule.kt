@@ -120,12 +120,12 @@ object Schedule : Module {
         context.requester ?: return
 
         if (!context.requester.isOwner(context.bot)) {
-            context.reply("This command is unfinished and is currently only usable by the bot owner")
+            context.replyAsync("This command is unfinished and is currently only usable by the bot owner")
             return
         }
 
         if (command.isBlank()) {
-            context.reply("No command was specified.")
+            context.replyAsync("No command was specified.")
         }
 
         val trimmed = (if (command.startsWith("m!")) command.substring(2) else command).trim()
@@ -163,7 +163,7 @@ object Schedule : Module {
             }
 
             onFinish {
-                context.reply("Ok, scheduling every $interval s")
+                context.replyAsync("Ok, scheduling every $interval s")
 
                 val event = GuildScheduledEvent().apply {
                     this.guildId = context.guild.idLong
@@ -186,7 +186,7 @@ object Schedule : Module {
         }
 
         if (!Dialog.beginDialog(context.channel, context.requester, dialog)) {
-            context.reply("There is already an active assistant")
+            context.replyAsync("There is already an active assistant")
         }
     }
 
@@ -198,7 +198,7 @@ object Schedule : Module {
                 .uniqueResult() as Long
         }
 
-        context.reply("There are $count events scheduled in this server")
+        context.replyAsync("There are $count events scheduled in this server")
     }
 
     override fun close() {

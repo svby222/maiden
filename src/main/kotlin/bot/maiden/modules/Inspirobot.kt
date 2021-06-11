@@ -23,7 +23,7 @@ object Inspirobot : Module {
                 HttpResponse.BodyHandlers.ofString(Charsets.UTF_8)
             ).await().body()
 
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setTitle("Your inspiration")
                 .setAuthor(

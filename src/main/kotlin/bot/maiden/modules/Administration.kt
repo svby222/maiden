@@ -18,7 +18,7 @@ object Administration : Module {
             context.message?.delete()?.await()
             context.channel.sendMessage(text).await()
         } else {
-            context.reply("${context.requester.asMention} no")
+            context.replyAsync("${context.requester.asMention} no")
         }
     }
 
@@ -33,20 +33,20 @@ object Administration : Module {
         val (guildId, channelId) = gc.split("/").map { it.toLong() }
 
         val channel = context.jda.getGuildById(guildId)?.getTextChannelById(channelId) ?: run {
-            context.reply("I can't do that.")
+            context.replyAsync("I can't do that.")
             return
         }
 
         if (context.requester.isOwner(context.bot)) {
             channel.sendMessage(text).await()
         } else {
-            context.reply("${context.requester.asMention} no")
+            context.replyAsync("${context.requester.asMention} no")
         }
     }
 
     @Command
     suspend fun invite(context: CommandContext, ignore: String) {
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setTitle("Invite ${context.jda.selfUser.name} to your server")
                 .setThumbnail(context.jda.selfUser.avatarUrl)
@@ -61,7 +61,7 @@ object Administration : Module {
     suspend fun help(context: CommandContext, ignore: String) {
         val ownerUser = context.jda.retrieveUserById(context.bot.ownerId).await()
 
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setColor(Color.WHITE)
                 .setTitle("About ${context.jda.selfUser.name}")
@@ -104,7 +104,7 @@ object Administration : Module {
     @Command
     suspend fun commands(context: CommandContext, ignore: String) {
         // TODO char limit
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setTitle("List of commands")
                 .setThumbnail(context.jda.selfUser.avatarUrl)

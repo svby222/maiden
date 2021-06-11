@@ -42,7 +42,7 @@ object Horoscope : Module {
     @Command
     suspend fun horoscope(context: CommandContext, sign: String) {
         suspend fun fail() {
-            context.reply(
+            context.replyAsync(
                 failureEmbed(context.jda)
                     .appendDescription("Invalid sign specified")
                     .build()
@@ -90,7 +90,7 @@ object Horoscope : Module {
                 }
             }
 
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setTitle(horoscopeCachedDay.format(dateFormatter), url)
                 .setDescription(text)
@@ -104,7 +104,7 @@ object Horoscope : Module {
     @Command
     suspend fun moon(context: CommandContext, ignore: String) {
         suspend fun fail() {
-            context.reply(
+            context.replyAsync(
                 """
                     Something went wrong while trying to parse moongiant.
                     This might indicate that the site has updated its markup, or that something else has gone wrong.
@@ -152,7 +152,7 @@ object Horoscope : Module {
             }
         }
 
-        context.reply(
+        context.replyAsync(
             baseEmbed(context)
                 .setThumbnail(moonImageUrl)
                 .apply {
@@ -193,6 +193,6 @@ object Horoscope : Module {
 
     @Command
     suspend fun `8ball`(context: CommandContext, ignore: String) {
-        context.reply(":8ball: ${eightBallAnswers.random()}")
+        context.replyAsync(":8ball: ${eightBallAnswers.random()}")
     }
 }

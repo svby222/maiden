@@ -2,6 +2,7 @@ package bot.maiden
 
 import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.*
+import net.dv8tion.jda.api.requests.restaction.MessageAction
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.callSuspend
 
@@ -32,7 +33,7 @@ data class CommandContext(
 
     val bot: Bot,
 
-    val reply: suspend (Message) -> Unit
+    val reply: (Message) -> MessageAction
 ) {
     val jda get() = bot.jda
     val modules get() = bot.modules
@@ -40,8 +41,15 @@ data class CommandContext(
 
     val database get() = bot.database
 
-    suspend fun reply(text: String) = reply(MessageBuilder(text).build())
-    suspend fun reply(embed: MessageEmbed) = reply(MessageBuilder(embed).build())
+    suspend fun replyAsync(message: Message, transform: MessageAction.() -> Unit = {}): Message {
+        return reply(message).apply(transform).await()
+    }
+
+    suspend fun replyAsync(text: String, transform: MessageAction.() -> Unit = {}) =
+        replyAsync(MessageBuilder(text).build(), transform)
+
+    suspend fun replyAsync(embed: MessageEmbed, transform: MessageAction.() -> Unit = {}) =
+        replyAsync(MessageBuilder(embed).build(), transform)
 
     companion object {
         @JvmStatic
@@ -55,7 +63,7 @@ data class CommandContext(
 
             bot,
 
-            { message.reply(it).mentionRepliedUser(false).await() }
+            { message.reply(it).mentionRepliedUser(false) }
         )
 
         @JvmStatic
@@ -69,7 +77,7 @@ data class CommandContext(
 
             bot,
 
-            { channel.sendMessage(it).await() }
+            { channel.sendMessage(it) }
         )
     }
 }

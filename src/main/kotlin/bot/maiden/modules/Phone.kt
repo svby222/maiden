@@ -49,7 +49,7 @@ object Phone : Module {
 
         val data = context.database.withSession { it.find(GuildData::class.java, context.guild.idLong) }
             ?: run {
-                context.reply(
+                context.replyAsync(
                     failureEmbed(context.jda)
                         .appendDescription(
                             """
@@ -69,18 +69,18 @@ object Phone : Module {
 
         if (target.isBlank()) {
             // Return phone number
-            context.reply(":mobile_phone: Your server's phone number is $sourceNumber")
+            context.replyAsync(":mobile_phone: Your server's phone number is $sourceNumber")
         } else {
             val previous =
                 partners.putIfAbsent(context.guild.idLong, PartnerState(ConnectionState.Closed, -1, -1, -1, -1))
             if (previous != null) {
-                context.reply(":mobile_phone: You're already in a call! Hang up with m!hangup.")
+                context.replyAsync(":mobile_phone: You're already in a call! Hang up with m!hangup.")
                 return
             }
 
             val targetNumber = PhoneNumber(target.filter { it in '0'..'9' })
             if (targetNumber.value.isBlank()) {
-                context.reply(":mobile_phone: That's not a valid number.")
+                context.replyAsync(":mobile_phone: That's not a valid number.")
             } else {
                 // Find guild
                 val otherGuild = context.database.withSession {
@@ -90,28 +90,28 @@ object Phone : Module {
                 } as? GuildData
 
                 if (otherGuild == null) {
-                    context.reply(":mobile_phone: That number doesn't seem to be in use...")
+                    context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
                     return abort()
                 }
                 if (otherGuild.guildId == context.guild.idLong) {
-                    context.reply(":mobile_phone: You can't call yourself!")
+                    context.replyAsync(":mobile_phone: You can't call yourself!")
                     return abort()
                 }
 
                 val recipient = context.jda.getGuildById(otherGuild.guildId)
                 if (recipient == null) {
-                    context.reply(":mobile_phone: That number doesn't seem to be in use...")
+                    context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
                     return abort()
                 }
 
                 if (partners[recipient.idLong] != null) {
-                    context.reply(":mobile_phone: That number seems to be busy. Try calling back later!")
+                    context.replyAsync(":mobile_phone: That number seems to be busy. Try calling back later!")
                     return abort()
                 }
 
                 val targetChannel = otherGuild.phoneChannel?.let { context.jda.getTextChannelById(it) }
                 if (targetChannel == null) {
-                    context.reply(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
+                    context.replyAsync(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
                     return abort()
                 }
 
@@ -123,7 +123,7 @@ object Phone : Module {
                 partners[state.source] = state
                 partners[state.partner] = state.flip()
 
-                context.reply(":mobile_phone: You call $targetNumber...")
+                context.replyAsync(":mobile_phone: You call $targetNumber...")
 
                 targetChannel.sendMessage(
                     """
@@ -143,7 +143,7 @@ object Phone : Module {
             partners.compute(currentState.partner) { _, state -> state?.copy(connectionState = ConnectionState.Active) }
             partners[context.guild.idLong] = currentState.copy(connectionState = ConnectionState.Active)
 
-            context.reply(":mobile_phone: You picked up the phone.")
+            context.replyAsync(":mobile_phone: You picked up the phone.")
 
             // TODO channel doesn't exist?
             context.jda.getTextChannelById(currentState.partnerChannel)
@@ -158,7 +158,7 @@ object Phone : Module {
         if (oldState != null) partners.remove(oldState.partner)
         else return
 
-        context.reply(":mobile_phone: You hung up the phone.")
+        context.replyAsync(":mobile_phone: You hung up the phone.")
 
         context.jda.getTextChannelById(oldState.partnerChannel)
             ?.sendMessage(":mobile_phone: The other party hung up the phone.")?.await()
@@ -172,7 +172,7 @@ object Phone : Module {
             context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
         ) {
             // TODO actual permission handling
-            context.reply("You can't do that (not an administrator)")
+            context.replyAsync("You can't do that (not an administrator)")
             return
         }
 
@@ -190,7 +190,7 @@ object Phone : Module {
                 data
             }
         } ?: run {
-            context.reply(
+            context.replyAsync(
                 failureEmbed(context.jda)
                     .appendDescription(
                         """
@@ -204,7 +204,7 @@ object Phone : Module {
             )
         }
 
-        context.reply(":mobile_phone: <#${channel.idLong}> will now be used to receive incoming calls.")
+        context.replyAsync(":mobile_phone: <#${channel.idLong}> will now be used to receive incoming calls.")
     }
 
     override suspend fun onMessage(message: Message): Boolean {
