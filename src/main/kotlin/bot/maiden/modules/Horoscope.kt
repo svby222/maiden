@@ -102,7 +102,7 @@ object Horoscope : Module {
     var moonCachedDay = LocalDate.now().dayOfYear
 
     @Command
-    suspend fun moon(context: CommandContext, ignore: String) {
+    suspend fun moon(context: CommandContext) {
         suspend fun fail() {
             context.replyAsync(
                 """
@@ -192,7 +192,7 @@ object Horoscope : Module {
     )
 
     @Command
-    suspend fun `8ball`(context: CommandContext, ignore: String) {
+    suspend fun `8ball`(context: CommandContext) {
         context.replyAsync(":8ball: ${eightBallAnswers.random()}")
     }
 }

@@ -136,7 +136,7 @@ object Phone : Module {
     }
 
     @Command(hidden = true)
-    suspend fun pickup(context: CommandContext, ignore: String) {
+    suspend fun pickup(context: CommandContext) {
         val currentState = partners[context.guild.idLong] ?: return
 
         if (currentState.connectionState == ConnectionState.RequestedRecipient && currentState.sourceChannel == context.channel.idLong) {
@@ -153,7 +153,7 @@ object Phone : Module {
     }
 
     @Command(hidden = true)
-    suspend fun hangup(context: CommandContext, ignore: String) {
+    suspend fun hangup(context: CommandContext) {
         val oldState = partners.remove(context.guild.idLong)
         if (oldState != null) partners.remove(oldState.partner)
         else return
@@ -165,7 +165,7 @@ object Phone : Module {
     }
 
     @Command
-    suspend fun `set-phone-channel`(context: CommandContext, ignore: String) {
+    suspend fun `set-phone-channel`(context: CommandContext) {
         context.requester ?: return
 
         if (!context.requester.isOwner(context.bot) &&

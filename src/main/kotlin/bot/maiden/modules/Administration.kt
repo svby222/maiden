@@ -45,7 +45,7 @@ object Administration : Module {
     }
 
     @Command
-    suspend fun invite(context: CommandContext, ignore: String) {
+    suspend fun invite(context: CommandContext) {
         context.replyAsync(
             baseEmbed(context)
                 .setTitle("Invite ${context.jda.selfUser.name} to your server")
@@ -58,7 +58,7 @@ object Administration : Module {
     }
 
     @Command
-    suspend fun help(context: CommandContext, ignore: String) {
+    suspend fun help(context: CommandContext) {
         val ownerUser = context.jda.retrieveUserById(context.bot.ownerId).await()
 
         context.replyAsync(
@@ -102,7 +102,7 @@ object Administration : Module {
     }
 
     @Command
-    suspend fun commands(context: CommandContext, ignore: String) {
+    suspend fun commands(context: CommandContext) {
         // TODO char limit
         context.replyAsync(
             baseEmbed(context)
@@ -135,7 +135,7 @@ object Administration : Module {
     }
 
     @Command(hidden = true)
-    suspend fun `throw`(context: CommandContext, ignore: String) {
+    suspend fun `throw`(context: CommandContext) {
         throw Exception("Success")
     }
 }

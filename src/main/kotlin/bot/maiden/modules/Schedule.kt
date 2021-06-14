@@ -192,7 +192,7 @@ object Schedule : Module {
     }
 
     @Command(hidden = true)
-    suspend fun scheduled(context: CommandContext, ignore: String) {
+    suspend fun scheduled(context: CommandContext) {
         val count = context.bot.database.withSession {
             it.createQuery("select count(*) from GuildScheduledEvent where guild_id = :guild_id")
                 .setParameter("guild_id", context.guild.idLong)

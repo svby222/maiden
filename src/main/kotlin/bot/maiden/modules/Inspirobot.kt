@@ -14,7 +14,7 @@ object Inspirobot : Module {
     val http = HttpClient.newHttpClient()
 
     @Command
-    suspend fun inspire(context: CommandContext, ignore: String) {
+    suspend fun inspire(context: CommandContext) {
         val url = http
             .sendAsync(
                 HttpRequest.newBuilder(URI.create("https://inspirobot.me/api?generate=true"))
