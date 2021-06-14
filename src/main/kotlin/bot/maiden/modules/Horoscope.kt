@@ -92,7 +92,7 @@ object Horoscope : Module {
 
         context.replyAsync(
             baseEmbed(context)
-                .setTitle(horoscopeCachedDay.format(dateFormatter), url)
+                .setTitle(today.format(dateFormatter), url)
                 .setDescription(text)
                 .build()
         )
