@@ -1,5 +1,7 @@
 package bot.maiden
 
+import bot.maiden.common.ConversionSet
+import bot.maiden.common.addPrimitiveConverters
 import com.typesafe.config.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -57,6 +59,12 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
 
     val modules get() = Collections.unmodifiableList(_modules)
     val commands get() = Collections.unmodifiableList(_commands)
+
+    val conversions = ConversionSet()
+
+    init {
+        addPrimitiveConverters(conversions)
+    }
 
     fun addModules(modules: Iterable<Module>) {
         this._modules.addAll(modules)
@@ -136,7 +144,13 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                         LOGGER.info("User ${event.message.author.asTag} used command $command($args) in guild \"${event.message.guild.name}\" (${event.message.guild.idLong}/${event.message.channel.idLong})")
 
                         try {
-                            dispatch(_commands, CommandContext.fromMessage(event.message, this), command, args)
+                            dispatch(
+                                conversions,
+                                _commands,
+                                CommandContext.fromMessage(event.message, this),
+                                command,
+                                args
+                            )
                         } catch (e: Exception) {
                             val wrapped = if (e is InvocationTargetException) (e.cause ?: e) else e
 

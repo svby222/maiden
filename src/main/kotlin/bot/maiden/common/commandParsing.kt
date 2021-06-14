@@ -101,3 +101,18 @@ internal fun reconstructArgumentString(args: List<Arg>): String {
         }
     }.trim()
 }
+
+// Try to infer a sensible type for each argument
+internal fun convertInitial(args: List<Arg>): List<Arg> {
+    return args.map { arg ->
+        val valueTrimmed = arg.stringValue.trim()
+
+        // Taken from https://stackoverflow.com/a/23872060
+        if (Regex("^[+-]?(\\d+)\$").matches(valueTrimmed))
+            return@map arg.copy(convertedValue = valueTrimmed.toBigInteger())
+        if (Regex("^[+-]?((\\d+(\\.\\d*)?)|(\\.\\d+))\$").matches(valueTrimmed))
+            return@map arg.copy(convertedValue = valueTrimmed.toBigDecimal())
+
+        arg
+    }
+}

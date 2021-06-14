@@ -80,6 +80,7 @@ object Schedule : Module {
 
                 try {
                     dispatch(
+                        bot.conversions,
                         bot._commands,
                         CommandContext.fromScheduled(
                             requester,
