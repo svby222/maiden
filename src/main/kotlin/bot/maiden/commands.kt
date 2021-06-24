@@ -1,20 +1,16 @@
 package bot.maiden
 
-import bot.maiden.common.ArgumentConverter
-import bot.maiden.common.ConversionSet
-import bot.maiden.common.convertInitial
-import bot.maiden.common.parseArguments
+import bot.maiden.common.*
 import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.*
 import net.dv8tion.jda.api.requests.restaction.MessageAction
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.callSuspendBy
-import kotlin.reflect.full.valueParameters
 import kotlin.reflect.jvm.jvmErasure
 
 annotation class Command(
-    val hidden: Boolean = false
+    val hidden: Boolean = false,
 )
 
 interface Module : AutoCloseable {
@@ -89,6 +85,77 @@ data class CommandContext(
     }
 }
 
+fun matchArgumentsOverload(
+    functions: List<Pair<Any, KFunction<*>>>,
+    conversions: ConversionSet,
+    args: List<Arg>
+): List<Pair<Pair<Any, KFunction<*>>, Map<KParameter, Pair<Any?, Int>>>> {
+    val matches = mutableListOf<Pair<Pair<Any, KFunction<*>>, Map<KParameter, Pair<Any?, Int>>>>()
+
+    for (function in functions) {
+        val match = matchArguments(function.second, conversions, args)
+        match.getOrNull()?.let { matches.add(Pair(function, it)) }
+    }
+
+    return matches
+}
+
+fun matchArguments(
+    function: KFunction<*>,
+    conversions: ConversionSet,
+    args: List<Arg>
+): Result<Map<KParameter, Pair<Any?, Int>>> {
+    val results = mutableMapOf<KParameter, Pair<Any?, Int>>()
+
+    val argIterator = args.iterator()
+    var argIndex = 0
+
+    val validParameterPredicate: (KParameter) -> Boolean = {
+        it.kind == KParameter.Kind.VALUE && it.type.jvmErasure !in listOf(CommandContext::class)
+    }
+
+    val validParameterCount = function.parameters.count(validParameterPredicate)
+
+    for (parameter in function.parameters.filterNot { it.type.jvmErasure == CommandContext::class }) {
+        if (!validParameterPredicate(parameter)) continue
+
+        if (!argIterator.hasNext()) {
+            return Result.failure(
+                Exception("Invalid parameter count; provided ${args.size}, expected $validParameterCount")
+            )
+        }
+
+        val arg = argIterator.next()
+        argIndex++
+
+        val conversionList =
+            conversions.getConverterList(arg.convertedValue::class, parameter.type.jvmErasure)
+                ?: // TODO custom types
+                return Result.failure(
+                    Exception("Invalid arguments; could not convert '${arg.stringValue}' to the expected type ${parameter.type.jvmErasure}")
+                )
+
+        var value = arg.convertedValue
+        for ((converter: ArgumentConverter<*, *>) in conversionList) {
+            // TODO: proper error message
+            @Suppress("UNCHECKED_CAST")
+            value = (converter as ArgumentConverter<Any, Any>).convert(value).getOrThrow()
+        }
+
+        results[parameter] = Pair(value, conversionList.sumOf { it.second })
+    }
+
+    // Too many arguments provided
+    if (argIterator.hasNext()) {
+        return Result.failure(
+            Exception("Invalid parameter count; provided ${args.size}, expected $validParameterCount")
+        )
+    }
+
+    // TODO priority
+    return Result.success(results)
+}
+
 suspend fun dispatch(
     conversions: ConversionSet,
     handlers: List<Pair<Any, KFunction<*>>>,
@@ -96,16 +163,16 @@ suspend fun dispatch(
     command: String,
     args: String
 ): Boolean {
-    val handler = handlers.firstOrNull { (_, function) -> function.name == command } ?: run {
-        context.replyAsync(
-            failureEmbed(context.jda)
-                .appendDescription("No command with the name `${command}` was found")
-                .build()
-        )
-        return false
-    }
-
-    val (receiver, function) = handler
+    val handlersFiltered = handlers.filter { (_, function) -> function.name == command }
+        .takeIf { it.isNotEmpty() }
+        ?: run {
+            context.replyAsync(
+                failureEmbed(context.jda)
+                    .appendDescription("No command with the name `${command}` was found")
+                    .build()
+            )
+            return false
+        }
 
     // Argument conversion
     val parsedArgs = parseArguments(args)
@@ -113,55 +180,47 @@ suspend fun dispatch(
 
     // TODO: list/vararg parameter support
 
-    val requiredArgumentCount = function.valueParameters.filter { it.type.jvmErasure != CommandContext::class }.size
-    if (converted.size != requiredArgumentCount) {
-        context.replyAsync(
-            failureEmbed(context.jda)
-                .appendDescription("Parameter count mismatch: got ${converted.size}, expected $requiredArgumentCount")
-                .build()
-        )
-        return false
-    }
+    val matches = matchArgumentsOverload(handlersFiltered, conversions, converted)
+    val matchesByScore = matches.groupBy { it.second.entries.sumOf { it.value.second } }
 
-    val invokeArguments = mutableMapOf<KParameter, Any?>()
+    val bestMatchesEntry = matchesByScore.entries.maxOfWithOrNull(compareBy { it.key }) { it }
+    val bestMatches = bestMatchesEntry?.value ?: emptyList()
 
-    val convertedIterator = converted.iterator()
-    for (parameter in function.parameters) {
-        val value = when (parameter.kind) {
-            KParameter.Kind.INSTANCE, KParameter.Kind.EXTENSION_RECEIVER -> receiver
-            KParameter.Kind.VALUE -> {
-                if (parameter.type.jvmErasure == CommandContext::class) context
-                else {
-                    val arg = convertedIterator.next()
-
-                    val conversionList =
-                        conversions.getConverterList(arg.convertedValue::class, parameter.type.jvmErasure)
-
-                    if (conversionList == null) {
-                        context.replyAsync(
-                            failureEmbed(context.jda)
-                                .appendDescription("Invalid arguments; could not convert '${arg.stringValue}' to the expected type ${parameter.type.jvmErasure}")
-                                .build()
-                        )
-                        return false
-                    } else {
-                        var value = arg.convertedValue
-                        for (converter in conversionList) {
-                            // TODO: proper error message
-                            @Suppress("UNCHECKED_CAST")
-                            value = (converter as ArgumentConverter<Any, Any>).convert(value).getOrThrow()
-                        }
-
-                        value
-                    }
-                }
-            }
+    when {
+        bestMatches.isEmpty() -> {
+            context.replyAsync(
+                failureEmbed(context.jda)
+                    .appendDescription("No handler for command '$command' accepts the provided arguments.")
+                    .build()
+            )
+            return false
         }
+        bestMatches.size > 1 -> {
+            context.replyAsync(
+                failureEmbed(context.jda)
+                    .appendDescription("Overload resolution failed; multiple handlers would accept the provided arguments with match score ${bestMatchesEntry?.key}")
+                    .build()
+            )
+            return false
+        }
+        else -> {
+            // Match found
+            val match = bestMatches.single()
 
-        invokeArguments[parameter] = value
+            val (functionPair, matchedArguments) = match
+            val (receiver, function) = functionPair
+            val invokeArguments = matchedArguments.toMutableMap()
+
+            for (parameter in function.parameters) {
+                if (parameter.kind == KParameter.Kind.INSTANCE || parameter.kind == KParameter.Kind.EXTENSION_RECEIVER)
+                    invokeArguments[parameter] = Pair(receiver, 0)
+                else if (parameter.type.jvmErasure == CommandContext::class)
+                    invokeArguments[parameter] = Pair(context, 0)
+            }
+
+            function.callSuspendBy(invokeArguments.mapValues { it.value.first })
+
+            return true
+        }
     }
-
-    function.callSuspendBy(invokeArguments)
-
-    return true
 }

@@ -30,7 +30,7 @@ class ConversionSet {
         converters.getOrPut(fromType) { hashMapOf() }[toType] = ConverterData(converter, priority)
     }
 
-    fun getConverterList(fromType: KClass<*>, toType: KClass<*>): List<ArgumentConverter<*, *>>? {
+    fun getConverterList(fromType: KClass<*>, toType: KClass<*>): List<Pair<ArgumentConverter<*, *>, Int>>? {
         // TODO: currently, this performs DFS; another algorithm + caching may be more effective (i.e. Johnson)
         // TODO: cache results?
 
@@ -74,10 +74,11 @@ class ConversionSet {
 
         return sequence {
             while (second != null) {
-                val converter = converters[first]?.get(second)?.converter
+                val data = converters[first]?.get(second)
                     ?: throw IllegalStateException("Conversion from $first to $second discovered by pathfinding, but none was present in the ${ConversionSet::class.simpleName}")
+                val converter = data.converter
 
-                yield(converter)
+                yield(Pair(converter, data.priority))
 
                 first = second
                 second = resultsStack.poll()
