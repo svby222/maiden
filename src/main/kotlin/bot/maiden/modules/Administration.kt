@@ -8,11 +8,14 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
 import java.awt.Color
+import java.math.BigDecimal
+import java.math.BigInteger
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
 
 fun User.isOwner(bot: Bot) = idLong == bot.ownerId
@@ -144,6 +147,13 @@ object Administration : Module {
         )
     }
 
+    // TODO configurability
+    private val typeNameMap = mapOf(
+        String::class to "text",
+        BigInteger::class to "int",
+        BigDecimal::class to "num",
+    )
+
     @Command
     @HelpText(
         "Display an information dialog for the specified command.",
@@ -170,7 +180,20 @@ object Administration : Module {
                     append(" ")
                     append(
                         parameters
-                            .joinToString(" ") { "[${it.type.jvmErasure.simpleName}]" }
+                            .joinToString(" ") {
+                                buildString {
+                                    append("[")
+
+                                    append(it.name)
+                                    append(": ")
+                                    append(typeNameMap[it.type.jvmErasure] ?: it.type.jvmErasure.simpleName)
+
+                                    if (it.hasAnnotation<JoinRemaining>()) append("+")
+                                    if (it.hasAnnotation<Optional>()) append("?")
+
+                                    append("]")
+                                }
+                            }
                     )
                 }
 
