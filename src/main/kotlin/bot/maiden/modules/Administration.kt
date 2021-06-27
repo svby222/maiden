@@ -1,7 +1,10 @@
 package bot.maiden.modules
 
 import bot.maiden.*
+import bot.maiden.common.ArgumentConverter
 import bot.maiden.common.baseEmbed
+import net.dv8tion.jda.api.entities.Guild
+import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
 import java.awt.Color
 import java.time.Duration
@@ -10,8 +13,27 @@ import kotlin.reflect.full.findAnnotation
 fun User.isOwner(bot: Bot) = idLong == bot.ownerId
 
 object Administration : Module {
+    override suspend fun initialize(bot: Bot) {
+        bot.conversions.addConverter(object : ArgumentConverter<String, GuildChannelPair> {
+            override val fromType get() = String::class
+            override val toType get() = GuildChannelPair::class
+
+            override suspend fun convert(from: String): Result<GuildChannelPair> {
+                val (guildId, channelId) = from.split("/").map { it.toLong() }
+
+                val guild = bot.jda.getGuildById(guildId)
+                val channel = guild?.getTextChannelById(channelId)
+
+                guild ?: return Result.failure(Exception("Guild not found"))
+                channel ?: return Result.failure(Exception("Channel not found"))
+
+                return Result.success(GuildChannelPair(guild, channel))
+            }
+        }, 1)
+    }
+
     @Command(hidden = true)
-    suspend fun say(context: CommandContext, text: String) {
+    suspend fun say(context: CommandContext, @JoinRemaining text: String) {
         context.requester ?: return
 
         if (context.requester.isOwner(context.bot)) {
@@ -22,23 +44,17 @@ object Administration : Module {
         }
     }
 
+    data class GuildChannelPair(
+        val guild: Guild,
+        val channel: TextChannel
+    )
+
     @Command(hidden = true)
-    suspend fun sayin(context: CommandContext, query: String) {
+    suspend fun sayin(context: CommandContext, target: GuildChannelPair, @JoinRemaining text: String) {
         context.requester ?: return
 
-        val splitIndex = query.indexOf(' ')
-        val gc = query.substring(0, splitIndex).trim()
-        val text = query.substring(splitIndex + 1).trim()
-
-        val (guildId, channelId) = gc.split("/").map { it.toLong() }
-
-        val channel = context.jda.getGuildById(guildId)?.getTextChannelById(channelId) ?: run {
-            context.replyAsync("I can't do that.")
-            return
-        }
-
         if (context.requester.isOwner(context.bot)) {
-            channel.sendMessage(text).await()
+            target.channel.sendMessage(text).await()
         } else {
             context.replyAsync("${context.requester.asMention} no")
         }
@@ -135,7 +151,7 @@ object Administration : Module {
     }
 
     @Command(hidden = true)
-    suspend fun `throw`(context: CommandContext) {
+    fun `throw`(context: CommandContext) {
         throw Exception("Success")
     }
 }

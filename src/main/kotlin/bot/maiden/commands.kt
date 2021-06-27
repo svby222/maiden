@@ -124,6 +124,7 @@ suspend fun matchArguments(
         if (!argIterator.hasNext()) {
             if (index == validParameters.lastIndex && parameter.hasAnnotation<Optional>()) {
                 // Optional parameter, ignore
+                return Result.success(results)
             } else {
                 return Result.failure(
                     Exception("Invalid parameter count; provided ${args.size}, expected $validParameterCount")

@@ -40,8 +40,9 @@ object Phone : Module {
 
     private val partners = ConcurrentHashMap<Long, PartnerState>()
 
+    // TODO overload instead of blank?
     @Command
-    suspend fun call(context: CommandContext, target: String) {
+    suspend fun call(context: CommandContext, @Optional @JoinRemaining target: String = "") {
         fun abort() {
             partners.remove(context.guild.idLong)
         }

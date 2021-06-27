@@ -17,7 +17,7 @@ object Goodreads : Module {
     val http = HttpClient.newHttpClient()
 
     @Command
-    suspend fun quote(context: CommandContext, tag: String) {
+    suspend fun quote(context: CommandContext, @JoinRemaining tag: String) {
         data class Quote(
             val text: String,
             val author: String?,

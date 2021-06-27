@@ -1,10 +1,7 @@
 package bot.maiden.modules
 
-import bot.maiden.Command
-import bot.maiden.CommandContext
-import bot.maiden.Module
+import bot.maiden.*
 import bot.maiden.common.baseEmbed
-import bot.maiden.failureEmbed
 import kotlinx.coroutines.future.await
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -192,7 +189,10 @@ object Horoscope : Module {
     )
 
     @Command
-    suspend fun `8ball`(context: CommandContext) {
+    suspend fun `8ball`(
+        context: CommandContext,
+        @Suppress("UNUSED_PARAMETER") @JoinRemaining query: String? = null
+    ) {
         context.replyAsync(":8ball: ${eightBallAnswers.random()}")
     }
 }

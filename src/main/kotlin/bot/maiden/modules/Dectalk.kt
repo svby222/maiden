@@ -50,7 +50,7 @@ object Dectalk : Module {
     }
 
     @Command
-    suspend fun dsay(context: CommandContext, text: String) {
+    suspend fun dsay(context: CommandContext, @JoinRemaining text: String) {
         val outputTmpdir = withContext(Dispatchers.IO) { Files.createTempDirectory("maiden_dectalk-out") }
 
         try {
