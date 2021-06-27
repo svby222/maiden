@@ -8,6 +8,8 @@ import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
 import java.awt.Color
 import java.time.Duration
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import kotlin.reflect.full.findAnnotation
 
 fun User.isOwner(bot: Bot) = idLong == bot.ownerId
@@ -42,6 +44,22 @@ object Administration : Module {
         } else {
             context.replyAsync("${context.requester.asMention} no")
         }
+    }
+
+    @Command
+    suspend fun userinfo(context: CommandContext, user: User) {
+        val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
+        val member = context.guild.getMember(user)
+
+        context.replyAsync(
+            baseEmbed(context)
+                .setTitle("Info for user ${user.asTag}")
+                .setDescription("User ID: ${user.id}")
+                .setThumbnail(user.avatarUrl ?: user.defaultAvatarUrl)
+                .addField("Creation date", user.timeCreated.format(formatter), true)
+                .apply { member?.let { addField("Join date", it.timeJoined.format(formatter), true) } }
+                .build()
+        )
     }
 
     data class GuildChannelPair(
