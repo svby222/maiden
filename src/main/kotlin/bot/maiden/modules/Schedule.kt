@@ -5,6 +5,7 @@ import bot.maiden.model.GuildScheduledEvent
 import bot.maiden.utilities.MultistepDialog
 import bot.maiden.utilities.multistepDialog
 import kotlinx.coroutines.*
+import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.exceptions.ErrorResponseException
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
@@ -78,6 +79,13 @@ object Schedule : Module {
                 val requesterName = requester?.asTag ?: "unknown user"
                 LOGGER.info("Executed command $command($args) scheduled by $requesterName in guild \"${targetGuild.name}\" (${eventData.guildId}/${eventData.channelId})")
 
+                // Check if this event has been deleted
+                val eventStillExists = bot.database.withSession {
+                    it.find(GuildScheduledEvent::class.java, eventData.eventId) != null
+                }
+
+                if (!eventStillExists) break
+
                 try {
                     dispatch(
                         bot.conversions,
@@ -114,14 +122,24 @@ object Schedule : Module {
         }
     }
 
-    @Command(hidden = true)
-    suspend fun schedule(context: CommandContext, command: String) {
+    private val INTERVAL_REGEX =
+        Regex("^(?:(?:(\\d+) ?d(?:ay(?:s)?)?))?(?:,? *(?:(\\d+) ?h(?:our(?:s)?)?))?(?:,? *(?:(\\d+) ?m(?:inute(?:s)?)?)\$)?")
+
+    @Command
+    @HelpText(
+        "Schedule command execution at regular intervals. Only available to server administrators.",
+        group = "schedule"
+    )
+    suspend fun schedule(context: CommandContext, @JoinRemaining command: String) {
         // TODO configure whether some commands can be run without requester
 
         context.requester ?: return
 
-        if (!context.requester.isOwner(context.bot)) {
-            context.replyAsync("This command is unfinished and is currently only usable by the bot owner")
+        if (!context.requester.isOwner(context.bot) &&
+            context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
+        ) {
+            // TODO actual permission handling
+            context.replyAsync("You can't do that (not an administrator)")
             return
         }
 
@@ -139,24 +157,25 @@ object Schedule : Module {
                     How often should that command be executed?
                     
                     Every...
+                    
+                    (enter interval in the format `_ d _ h _ m`)
+                    **Note: the minimum interval is 3 hours.**
                 """.trimIndent()
 
-                option("Minute", 0)
-                option("Hour", 1)
-                option("3 hours", 5)
-                option("6 hours", 4)
-                option("12 hours", 3)
-                option("Day", 2)
-
                 onResponse { _, data ->
-                    interval = when (data) {
-                        0 -> 60
-                        1 -> 60 * 60
-                        2 -> 24 * 60 * 60
-                        3 -> 12 * 60 * 60
-                        4 -> 6 * 60 * 60
-                        5 -> 3 * 60 * 60
-                        else -> throw IllegalStateException("Unknown response data $data")
+                    val matches = INTERVAL_REGEX.matchEntire(data as String)
+                        ?: return@onResponse MultistepDialog.StepResult.Invalid
+
+                    val days = matches.groups[1]?.value?.toIntOrNull() ?: 0
+                    val hours = matches.groups[2]?.value?.toIntOrNull() ?: 0
+                    val minutes = matches.groups[3]?.value?.toIntOrNull() ?: 0
+
+                    interval =
+                        days * 86400L + hours * 3600L + minutes * 60L
+
+                    if (!context.requester.isOwner(context.bot) && interval < 3 * 3600L) {
+                        interval = 0
+                        return@onResponse MultistepDialog.StepResult.Invalid
                     }
 
                     MultistepDialog.StepResult.Next
@@ -191,15 +210,24 @@ object Schedule : Module {
         }
     }
 
-    @Command(hidden = true)
-    suspend fun scheduled(context: CommandContext) {
+    @Command
+    @HelpText(
+        "Clear all scheduled events in the current server. Only available to server administrators.",
+        group = "schedule"
+    )
+    suspend fun `clear-scheduled`(context: CommandContext) {
         val count = context.bot.database.withSession {
-            it.createQuery("select count(*) from GuildScheduledEvent where guild_id = :guild_id")
-                .setParameter("guild_id", context.guild.idLong)
-                .uniqueResult() as Long
+            it.beginTransaction().let { tx ->
+                val result = it.createQuery("delete from GuildScheduledEvent where guild_id = :guild_id")
+                    .setParameter("guild_id", context.guild.idLong)
+                    .executeUpdate()
+                tx.commit()
+
+                result
+            }
         }
 
-        context.replyAsync("There are $count events scheduled in this server")
+        context.replyAsync("$count scheduled events were deleted.")
     }
 
     override fun close() {

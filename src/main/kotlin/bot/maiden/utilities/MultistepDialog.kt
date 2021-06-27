@@ -8,7 +8,11 @@ class MultistepDialog(val steps: List<Step>, val finishHandler: suspend () -> Un
         Invalid,
     }
 
-    class Step(val text: String?, val options: List<Pair<String, Any?>>, val handler: (String, Any?) -> StepResult)
+    class Step(
+        val text: String?,
+        val options: List<Pair<String, Any?>>,
+        val handler: suspend (String, Any?) -> StepResult
+    )
 }
 
 @DslMarker
@@ -36,7 +40,8 @@ class MultistepDialogBuilder {
 class StepBuilder {
     var text: String? = null
     var options = mutableListOf<Pair<String, Any?>>()
-    private var handler: (String, Any?) -> MultistepDialog.StepResult = { _, _ -> MultistepDialog.StepResult.Next }
+    private var handler: suspend (String, Any?) -> MultistepDialog.StepResult =
+        { _, _ -> MultistepDialog.StepResult.Next }
 
     fun option(text: String, data: Any = text): StepBuilder {
         options.add(Pair(text, data))
@@ -48,7 +53,7 @@ class StepBuilder {
         return this
     }
 
-    fun onResponse(handler: (text: String, data: Any?) -> MultistepDialog.StepResult): StepBuilder {
+    fun onResponse(handler: suspend (text: String, data: Any?) -> MultistepDialog.StepResult): StepBuilder {
         this.handler = handler
         return this
     }

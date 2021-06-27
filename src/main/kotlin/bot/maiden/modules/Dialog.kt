@@ -45,13 +45,17 @@ object Dialog : Module {
             channel.sendMessage(
                 EmbedBuilder()
                     .setDescription(step.text)
-                    .addField(
-                        "Options",
-                        step.options
-                            .mapIndexed { index, pair -> Pair(index + 1, pair.first) }
-                            .joinToString("\n") { (_, text) -> " •  $text" },
-                        false
-                    )
+                    .apply {
+                        if (step.options.isNotEmpty()) {
+                            addField(
+                                "Options",
+                                step.options
+                                    .mapIndexed { index, pair -> Pair(index + 1, pair.first) }
+                                    .joinToString("\n") { (_, text) -> " •  $text" },
+                                false
+                            )
+                        }
+                    }
                     .build()
             ).await()
         }
@@ -72,36 +76,43 @@ object Dialog : Module {
                                 step.options.firstOrNull { it.second == null }
                             }
 
-                    if (option == null) {
-                        channel.sendMessage("Invalid option").await()
-                        continue
-                    } else {
-                        val text = option.first.takeIf { option.second != null } ?: response
-
-                        when (step.handler(text, option.second)) {
-                            MultistepDialog.StepResult.Previous -> {
-                                stepIndex = max(0, stepIndex - 1)
-                            }
-                            MultistepDialog.StepResult.Next -> {
-                                stepIndex++
-                            }
-                            MultistepDialog.StepResult.Cancel -> {
-                                break
-                            }
-                            MultistepDialog.StepResult.Invalid -> {
-                                // TODO
-                                channel.sendMessage("Invalid option result").await()
+                    val (text, optionData) =
+                        if (option == null) {
+                            if (step.options.isNotEmpty()) {
+                                channel.sendMessage("Invalid option").await()
                                 continue
-                            }
+                            } else Pair(response, response)
+                        } else {
+                            Pair(
+                                option.first.takeIf { option.second != null } ?: response,
+                                option.second
+                            )
                         }
 
-                        if (stepIndex >= dialog.steps.size) {
-                            dialog.finishHandler()
+                    when (step.handler(text, optionData)) {
+                        MultistepDialog.StepResult.Previous -> {
+                            stepIndex = max(0, stepIndex - 1)
+                        }
+                        MultistepDialog.StepResult.Next -> {
+                            stepIndex++
+                        }
+                        MultistepDialog.StepResult.Cancel -> {
                             break
                         }
-
-                        sendStep(dialog.steps[stepIndex])
+                        MultistepDialog.StepResult.Invalid -> {
+                            // TODO
+                            channel.sendMessage("Invalid option result").await()
+                            continue
+                        }
                     }
+
+                    if (stepIndex >= dialog.steps.size) {
+                        dialog.finishHandler()
+                        break
+                    }
+
+                    sendStep(dialog.steps[stepIndex])
+
                 }
             } finally {
                 currentDialogs.remove(channel.idLong)
