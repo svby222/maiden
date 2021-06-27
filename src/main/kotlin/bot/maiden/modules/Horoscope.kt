@@ -37,6 +37,7 @@ object Horoscope : Module {
     )
 
     @Command
+    @HelpText("Fetches today's horoscope for the specified astrological sign.")
     suspend fun horoscope(context: CommandContext, sign: String) {
         suspend fun fail() {
             context.replyAsync(
@@ -99,6 +100,7 @@ object Horoscope : Module {
     var moonCachedDay = LocalDate.now().dayOfYear
 
     @Command
+    @HelpText("Displays information about the current moon phase.")
     suspend fun moon(context: CommandContext) {
         suspend fun fail() {
             context.replyAsync(
@@ -189,6 +191,7 @@ object Horoscope : Module {
     )
 
     @Command
+    @HelpText("Provides answers to life's most urgent questions.")
     suspend fun `8ball`(
         context: CommandContext,
         @Suppress("UNUSED_PARAMETER") @JoinRemaining query: String? = null

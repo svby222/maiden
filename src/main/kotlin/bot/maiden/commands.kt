@@ -1,6 +1,7 @@
 package bot.maiden
 
 import bot.maiden.common.*
+import bot.maiden.modules.Common.COMMAND_PARAMETER_PREDICATE
 import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.*
 import net.dv8tion.jda.api.requests.restaction.MessageAction
@@ -12,6 +13,11 @@ import kotlin.reflect.jvm.jvmErasure
 
 annotation class Command(
     val hidden: Boolean = false,
+)
+
+annotation class HelpText(
+    val summary: String,
+    val group: String = ""
 )
 
 interface Module : AutoCloseable {
@@ -111,15 +117,11 @@ suspend fun matchArguments(
     val argIterator = args.iterator()
     var argIndex = 0
 
-    val validParameterPredicate: (KParameter) -> Boolean = {
-        it.kind == KParameter.Kind.VALUE && it.type.jvmErasure !in listOf(CommandContext::class)
-    }
-
-    val validParameters = function.parameters.filter(validParameterPredicate)
+    val validParameters = function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
     val validParameterCount = validParameters.size
 
     for ((index, parameter) in validParameters.withIndex()) {
-        if (!validParameterPredicate(parameter)) continue
+        if (!COMMAND_PARAMETER_PREDICATE(parameter)) continue
 
         if (!argIterator.hasNext()) {
             if (index == validParameters.lastIndex && parameter.hasAnnotation<Optional>()) {

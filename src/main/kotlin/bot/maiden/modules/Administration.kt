@@ -3,6 +3,7 @@ package bot.maiden.modules
 import bot.maiden.*
 import bot.maiden.common.ArgumentConverter
 import bot.maiden.common.baseEmbed
+import bot.maiden.modules.Common.COMMAND_PARAMETER_PREDICATE
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
@@ -10,7 +11,9 @@ import java.awt.Color
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.jvm.jvmErasure
 
 fun User.isOwner(bot: Bot) = idLong == bot.ownerId
 
@@ -47,6 +50,7 @@ object Administration : Module {
     }
 
     @Command
+    @HelpText("Fetch a user's account information.")
     suspend fun userinfo(context: CommandContext, user: User) {
         val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
         val member = context.guild.getMember(user)
@@ -79,6 +83,7 @@ object Administration : Module {
     }
 
     @Command
+    @HelpText("Display the bot's invite link.")
     suspend fun invite(context: CommandContext) {
         context.replyAsync(
             baseEmbed(context)
@@ -92,6 +97,10 @@ object Administration : Module {
     }
 
     @Command
+    @HelpText(
+        "Display the bot information dialog.",
+        group = "basic"
+    )
     suspend fun help(context: CommandContext) {
         val ownerUser = context.jda.retrieveUserById(context.bot.ownerId).await()
 
@@ -136,6 +145,92 @@ object Administration : Module {
     }
 
     @Command
+    @HelpText(
+        "Display an information dialog for the specified command.",
+        group = "basic"
+    )
+    suspend fun help(context: CommandContext, command: String) {
+        val commands = context.commands.filter { it.second.name.equals(command, ignoreCase = true) }
+            .map { it.second }
+
+        if (commands.isEmpty()) {
+            context.replyAsync("That command doesn't seem to exist.")
+            return
+        }
+
+        fun createDisplayTitle(function: KFunction<*>): String {
+            val parameters = function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
+
+            return buildString {
+                append("`")
+                append("m!")
+                append(function.name)
+
+                if (parameters.isNotEmpty()) {
+                    append(" ")
+                    append(
+                        parameters
+                            .joinToString(" ") { "[${it.type.jvmErasure.simpleName}]" }
+                    )
+                }
+
+                append("`")
+            }
+        }
+
+        context.replyAsync(
+            baseEmbed(context)
+                .setColor(Color.WHITE)
+                .setTitle("About $command")
+                .apply {
+                    // TODO this is suboptimal; try caching on startup
+                    val related = mutableSetOf<KFunction<*>>()
+
+                    for ((i, overload) in commands.withIndex()) {
+                        val displayTitle = createDisplayTitle(overload)
+
+                        addField(
+                            if (commands.size == 1) displayTitle
+                            else "#${i + 1}: $displayTitle",
+                            overload.findAnnotation<HelpText>()?.summary ?: "_No help text available._",
+                            false
+                        )
+
+                        // Find other commands with the same group
+                        overload.findAnnotation<HelpText>()?.group?.takeIf { it.isNotBlank() }
+                            ?.let { groupName ->
+
+                                related.addAll(
+                                    context.commands.asSequence()
+                                        .filter { it.second.findAnnotation<HelpText>()?.group == groupName }
+                                        .map { it.second }
+                                        .toList()
+                                )
+                            }
+                    }
+
+                    val relatedFiltered = related.filterNot { it in commands }
+
+                    if (relatedFiltered.isNotEmpty()) {
+                        addField("Related commands", buildString {
+                            for (overload in relatedFiltered) {
+                                append(createDisplayTitle(overload))
+                                append(": ")
+                                overload.findAnnotation<HelpText>()?.summary?.let { append(it) }
+                                appendLine()
+                            }
+                        }, false)
+                    }
+                }
+                .build()
+        )
+    }
+
+    @Command
+    @HelpText(
+        "Display a list of all available commands.",
+        group = "basic"
+    )
     suspend fun commands(context: CommandContext) {
         // TODO char limit
         context.replyAsync(

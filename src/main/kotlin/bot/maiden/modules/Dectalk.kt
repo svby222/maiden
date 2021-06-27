@@ -50,6 +50,7 @@ object Dectalk : Module {
     }
 
     @Command
+    @HelpText("Uses the DECtalk speech synthesizer to render the specified text as audio.")
     suspend fun dsay(context: CommandContext, @JoinRemaining text: String) {
         val outputTmpdir = withContext(Dispatchers.IO) { Files.createTempDirectory("maiden_dectalk-out") }
 

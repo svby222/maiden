@@ -40,9 +40,41 @@ object Phone : Module {
 
     private val partners = ConcurrentHashMap<Long, PartnerState>()
 
-    // TODO overload instead of blank?
     @Command
-    suspend fun call(context: CommandContext, @Optional @JoinRemaining target: String = "") {
+    @HelpText(
+        "View your server's phone number.",
+        group = "phone"
+    )
+    suspend fun call(context: CommandContext) {
+        val data = context.database.withSession { it.find(GuildData::class.java, context.guild.idLong) }
+            ?: run {
+                context.replyAsync(
+                    failureEmbed(context.jda)
+                        .appendDescription(
+                            """
+                            No GuildData entity found for this guild.
+                            This shouldn't happen :frowning:
+                            
+                            I'd appreciate it if you could notify the author (`m!help`). Thanks :smile:
+                        """.trimIndent()
+                        )
+                        .build()
+                )
+
+                return
+            }
+
+        val sourceNumber = PhoneNumber(data.phoneNumber ?: "?")
+
+        context.replyAsync(":mobile_phone: Your server's phone number is $sourceNumber")
+    }
+
+    @Command
+    @HelpText(
+        "Call another server by using their assigned phone number.",
+        group = "phone"
+    )
+    suspend fun call(context: CommandContext, @JoinRemaining target: String) {
         fun abort() {
             partners.remove(context.guild.idLong)
         }
@@ -67,75 +99,74 @@ object Phone : Module {
 
         val sourceNumber = PhoneNumber(data.phoneNumber ?: "?")
 
-        if (target.isBlank()) {
-            // Return phone number
-            context.replyAsync(":mobile_phone: Your server's phone number is $sourceNumber")
+        val previous =
+            partners.putIfAbsent(context.guild.idLong, PartnerState(ConnectionState.Closed, -1, -1, -1, -1))
+        if (previous != null) {
+            context.replyAsync(":mobile_phone: You're already in a call! Hang up with m!hangup.")
+            return
+        }
+
+        val targetNumber = PhoneNumber(target.filter { it in '0'..'9' })
+        if (targetNumber.value.isBlank()) {
+            context.replyAsync(":mobile_phone: That's not a valid number.")
         } else {
-            val previous =
-                partners.putIfAbsent(context.guild.idLong, PartnerState(ConnectionState.Closed, -1, -1, -1, -1))
-            if (previous != null) {
-                context.replyAsync(":mobile_phone: You're already in a call! Hang up with m!hangup.")
-                return
+            // Find guild
+            val otherGuild = context.database.withSession {
+                it.createQuery("from GuildData data where data.phoneNumber = :phoneNumber")
+                    .setParameter("phoneNumber", targetNumber.value)
+                    .uniqueResult()
+            } as? GuildData
+
+            if (otherGuild == null) {
+                context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
+                return abort()
+            }
+            if (otherGuild.guildId == context.guild.idLong) {
+                context.replyAsync(":mobile_phone: You can't call yourself!")
+                return abort()
             }
 
-            val targetNumber = PhoneNumber(target.filter { it in '0'..'9' })
-            if (targetNumber.value.isBlank()) {
-                context.replyAsync(":mobile_phone: That's not a valid number.")
-            } else {
-                // Find guild
-                val otherGuild = context.database.withSession {
-                    it.createQuery("from GuildData data where data.phoneNumber = :phoneNumber")
-                        .setParameter("phoneNumber", targetNumber.value)
-                        .uniqueResult()
-                } as? GuildData
-
-                if (otherGuild == null) {
-                    context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
-                    return abort()
-                }
-                if (otherGuild.guildId == context.guild.idLong) {
-                    context.replyAsync(":mobile_phone: You can't call yourself!")
-                    return abort()
-                }
-
-                val recipient = context.jda.getGuildById(otherGuild.guildId)
-                if (recipient == null) {
-                    context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
-                    return abort()
-                }
-
-                if (partners[recipient.idLong] != null) {
-                    context.replyAsync(":mobile_phone: That number seems to be busy. Try calling back later!")
-                    return abort()
-                }
-
-                val targetChannel = otherGuild.phoneChannel?.let { context.jda.getTextChannelById(it) }
-                if (targetChannel == null) {
-                    context.replyAsync(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
-                    return abort()
-                }
-
-                val state = PartnerState(
-                    ConnectionState.Requested,
-                    context.guild.idLong, recipient.idLong,
-                    context.channel.idLong, targetChannel.idLong
-                )
-                partners[state.source] = state
-                partners[state.partner] = state.flip()
-
-                context.replyAsync(":mobile_phone: You call $targetNumber...")
-
-                targetChannel.sendMessage(
-                    """
-                    :mobile_phone: You're receiving a call from $sourceNumber!
-                    Use m!pickup to pick up, or m!hangup to decline.
-                """.trimIndent()
-                ).await()
+            val recipient = context.jda.getGuildById(otherGuild.guildId)
+            if (recipient == null) {
+                context.replyAsync(":mobile_phone: That number doesn't seem to be in use...")
+                return abort()
             }
+
+            if (partners[recipient.idLong] != null) {
+                context.replyAsync(":mobile_phone: That number seems to be busy. Try calling back later!")
+                return abort()
+            }
+
+            val targetChannel = otherGuild.phoneChannel?.let { context.jda.getTextChannelById(it) }
+            if (targetChannel == null) {
+                context.replyAsync(":mobile_phone: The other server hasn't set their phone channel yet, so I can't put you through to anyone.")
+                return abort()
+            }
+
+            val state = PartnerState(
+                ConnectionState.Requested,
+                context.guild.idLong, recipient.idLong,
+                context.channel.idLong, targetChannel.idLong
+            )
+            partners[state.source] = state
+            partners[state.partner] = state.flip()
+
+            context.replyAsync(":mobile_phone: You call $targetNumber...")
+
+            targetChannel.sendMessage(
+                """
+                :mobile_phone: You're receiving a call from $sourceNumber!
+                Use m!pickup to pick up, or m!hangup to decline.
+            """.trimIndent()
+            ).await()
         }
     }
 
-    @Command(hidden = true)
+    @Command
+    @HelpText(
+        "Accept an incoming call from another server.",
+        group = "phone"
+    )
     suspend fun pickup(context: CommandContext) {
         val currentState = partners[context.guild.idLong] ?: return
 
@@ -152,7 +183,11 @@ object Phone : Module {
         }
     }
 
-    @Command(hidden = true)
+    @Command
+    @HelpText(
+        "End a call, or decline an incoming call from another server.",
+        group = "phone"
+    )
     suspend fun hangup(context: CommandContext) {
         val oldState = partners.remove(context.guild.idLong)
         if (oldState != null) partners.remove(oldState.partner)
@@ -165,6 +200,10 @@ object Phone : Module {
     }
 
     @Command
+    @HelpText(
+        "Set the channel you wish to receive incoming calls in. Only available to server administrators.",
+        group = "phone"
+    )
     suspend fun `set-phone-channel`(context: CommandContext) {
         context.requester ?: return
 

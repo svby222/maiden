@@ -2,6 +2,7 @@ package bot.maiden.modules
 
 import bot.maiden.Command
 import bot.maiden.CommandContext
+import bot.maiden.HelpText
 import bot.maiden.Module
 import bot.maiden.common.baseEmbed
 import kotlinx.coroutines.future.await
@@ -14,6 +15,7 @@ object Inspirobot : Module {
     val http = HttpClient.newHttpClient()
 
     @Command
+    @HelpText("Provides inspiration courtesy of [Inspirobot](https://inspirobot.me/).")
     suspend fun inspire(context: CommandContext) {
         val url = http
             .sendAsync(
