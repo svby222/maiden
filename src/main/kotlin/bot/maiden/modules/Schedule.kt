@@ -90,7 +90,7 @@ object Schedule : Module {
                         command,
                         args
                     )
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     val wrapped = if (e is InvocationTargetException) (e.cause ?: e) else e
 
                     e.printStackTrace()

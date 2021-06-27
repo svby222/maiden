@@ -1,7 +1,9 @@
 package bot.maiden
 
+import bot.maiden.common.ArgumentConverter
 import bot.maiden.common.ConversionSet
 import bot.maiden.common.addPrimitiveConverters
+import bot.maiden.modules.Common.USER_MENTION_REGEX
 import com.typesafe.config.Config
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,6 +13,7 @@ import net.dv8tion.jda.api.JDA
 import net.dv8tion.jda.api.JDABuilder
 import net.dv8tion.jda.api.entities.Activity
 import net.dv8tion.jda.api.entities.MessageType
+import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
@@ -64,6 +67,21 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
 
     init {
         addPrimitiveConverters(conversions)
+
+        conversions.addConverter(object : ArgumentConverter<String, User> {
+            override val fromType get() = String::class
+            override val toType get() = User::class
+
+            override suspend fun convert(from: String): Result<User> {
+                // TODO wrap for exceptions
+
+                return USER_MENTION_REGEX.matchEntire(from)?.let {
+                    it.groups[1]?.value?.toLongOrNull()?.let { id -> Result.success(jda.retrieveUserById(id).await()) }
+                        ?: Result.failure(Exception("Invalid ID for mention $from"))
+                    // TODO message
+                } ?: Result.failure(Exception(""))
+            }
+        }, 1)
     }
 
     fun addModules(modules: Iterable<Module>) {
@@ -151,7 +169,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                                 command,
                                 args
                             )
-                        } catch (e: Exception) {
+                        } catch (e: Throwable) {
                             val wrapped = if (e is InvocationTargetException) (e.cause ?: e) else e
 
                             e.printStackTrace()

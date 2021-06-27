@@ -3,15 +3,14 @@ package bot.maiden.modules
 import bot.maiden.*
 import bot.maiden.model.GuildData
 import bot.maiden.model.PhoneNumber
+import bot.maiden.modules.Common.GENERAL_MENTION_REGEX
+import bot.maiden.modules.Common.USER_MENTION_REGEX
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.entities.GuildChannel
 import net.dv8tion.jda.api.entities.Message
 import java.util.concurrent.ConcurrentHashMap
 
 object Phone : Module {
-    private val USER_MENTION_REGEX = Regex("<@!?(\\d+)>")
-    private val GENERAL_MENTION_REGEX = Regex("@(\\w+)")
-
     enum class ConnectionState {
         Closed,
         Requested,

@@ -9,7 +9,7 @@ interface ArgumentConverter<in From : Any, out To : Any> {
     val fromType: KClass<in From>
     val toType: KClass<out To>
 
-    fun convert(from: From): Result<To>
+    suspend fun convert(from: From): Result<To>
 }
 
 class ConversionSet {
@@ -29,6 +29,11 @@ class ConversionSet {
     ) {
         converters.getOrPut(fromType) { hashMapOf() }[toType] = ConverterData(converter, priority)
     }
+
+    inline fun <reified From : Any, reified To : Any> addConverter(
+        converter: ArgumentConverter<From, To>,
+        priority: Int
+    ) = addConverter(From::class, To::class, converter, priority)
 
     fun getConverterList(fromType: KClass<*>, toType: KClass<*>): List<Pair<ArgumentConverter<*, *>, Int>>? {
         // TODO: currently, this performs DFS; another algorithm + caching may be more effective (i.e. Johnson)
@@ -124,7 +129,7 @@ fun addPrimitiveConverters(set: ConversionSet) {
 
                     private val convertToFunc = convertToFunc
 
-                    override fun convert(from: Any): Result<Any> {
+                    override suspend fun convert(from: Any): Result<Any> {
                         return Result.success(this.convertToFunc(from as Number))
                     }
                 }
@@ -139,6 +144,6 @@ fun addPrimitiveConverters(set: ConversionSet) {
     set.addConverter(BigInteger::class, BigDecimal::class, object : ArgumentConverter<BigInteger, BigDecimal> {
         override val fromType get() = BigInteger::class
         override val toType get() = BigDecimal::class
-        override fun convert(from: BigInteger) = Result.success(from.toBigDecimal())
+        override suspend fun convert(from: BigInteger) = Result.success(from.toBigDecimal())
     }, 0)
 }
