@@ -278,7 +278,7 @@ object Administration : Module {
     }
 
     @Command(hidden = true)
-    fun `set-motd`(context: CommandContext, motd: String) {
+    fun `set-motd`(context: CommandContext, @JoinRemaining motd: String) {
         context.requester ?: return
 
         if (context.requester.isOwner(context.bot)) {
