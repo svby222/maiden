@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.requests.restaction.MessageAction
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.callSuspendBy
+import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
 
 annotation class Command(
@@ -85,7 +86,7 @@ data class CommandContext(
     }
 }
 
-fun matchArgumentsOverload(
+suspend fun matchArgumentsOverload(
     functions: List<Pair<Any, KFunction<*>>>,
     conversions: ConversionSet,
     args: List<Arg>
@@ -100,7 +101,7 @@ fun matchArgumentsOverload(
     return matches
 }
 
-fun matchArguments(
+suspend fun matchArguments(
     function: KFunction<*>,
     conversions: ConversionSet,
     args: List<Arg>
@@ -114,19 +115,42 @@ fun matchArguments(
         it.kind == KParameter.Kind.VALUE && it.type.jvmErasure !in listOf(CommandContext::class)
     }
 
-    val validParameterCount = function.parameters.count(validParameterPredicate)
+    val validParameters = function.parameters.filter(validParameterPredicate)
+    val validParameterCount = validParameters.size
 
-    for (parameter in function.parameters.filterNot { it.type.jvmErasure == CommandContext::class }) {
+    for ((index, parameter) in validParameters.withIndex()) {
         if (!validParameterPredicate(parameter)) continue
 
         if (!argIterator.hasNext()) {
-            return Result.failure(
-                Exception("Invalid parameter count; provided ${args.size}, expected $validParameterCount")
-            )
+            if (index == validParameters.lastIndex && parameter.hasAnnotation<Optional>()) {
+                // Optional parameter, ignore
+            } else {
+                return Result.failure(
+                    Exception("Invalid parameter count; provided ${args.size}, expected $validParameterCount")
+                )
+            }
         }
 
-        val arg = argIterator.next()
-        argIndex++
+        // TODO validate JoinRemaining parameter type (String)
+
+        val arg = if (index == validParameters.lastIndex && validParameters.last().hasAnnotation<JoinRemaining>()) {
+            argIterator.asSequence().reduce { acc, arg ->
+                val newString = buildString {
+                    append(acc.stringValue)
+                    append(" ".repeat(arg.leadingSpaces))
+                    append(arg.stringValue)
+                }
+
+                acc.copy(
+                    stringValue = newString,
+                    convertedValue = newString
+                )
+            }
+        } else {
+            argIterator.next().also {
+                argIndex++
+            }
+        }
 
         val conversionList =
             conversions.getConverterList(arg.convertedValue::class, parameter.type.jvmErasure)

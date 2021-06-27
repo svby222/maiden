@@ -2,6 +2,7 @@ package bot.maiden.common
 
 data class Arg(
     val stringValue: String,
+    val rawStringValue: String,
     val leadingSpaces: Int,
     val quoted: Boolean,
 
@@ -29,6 +30,7 @@ internal fun parseArguments(args: String): List<Arg> {
         results.add(
             Arg(
                 string,
+                if (quoted) "\"$string\"" else string,
                 leadingSpaces,
                 quoted,
 
@@ -71,11 +73,14 @@ internal fun parseArguments(args: String): List<Arg> {
             val mergedValue = lastArg.stringValue + string
             results[results.lastIndex] = lastArg.copy(
                 stringValue = mergedValue,
+                rawStringValue = mergedValue,
+                quoted = false,
                 convertedValue = mergedValue
             )
         } else {
             results.add(
                 Arg(
+                    string,
                     string,
                     leadingSpaces,
                     false,
