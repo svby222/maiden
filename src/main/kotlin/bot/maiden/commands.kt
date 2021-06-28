@@ -12,6 +12,7 @@ import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
 
 annotation class Command(
+    val name: String = "",
     val hidden: Boolean = false,
 )
 
@@ -93,14 +94,14 @@ data class CommandContext(
 }
 
 suspend fun matchArgumentsOverload(
-    functions: List<Pair<Any, KFunction<*>>>,
+    functions: List<Bot.RegisteredCommand>,
     conversions: ConversionSet,
     args: List<Arg>
-): List<Pair<Pair<Any, KFunction<*>>, Map<KParameter, Pair<Any?, Int>>>> {
-    val matches = mutableListOf<Pair<Pair<Any, KFunction<*>>, Map<KParameter, Pair<Any?, Int>>>>()
+): List<Pair<Bot.RegisteredCommand, Map<KParameter, Pair<Any?, Int>>>> {
+    val matches = mutableListOf<Pair<Bot.RegisteredCommand, Map<KParameter, Pair<Any?, Int>>>>()
 
     for (function in functions) {
-        val match = matchArguments(function.second, conversions, args)
+        val match = matchArguments(function.function, conversions, args)
         match.getOrNull()?.let { matches.add(Pair(function, it)) }
     }
 
@@ -185,17 +186,17 @@ suspend fun matchArguments(
 
 suspend fun dispatch(
     conversions: ConversionSet,
-    handlers: List<Pair<Any, KFunction<*>>>,
+    handlers: List<Bot.RegisteredCommand>,
     context: CommandContext,
-    command: String,
+    commandName: String,
     args: String
 ): Boolean {
-    val handlersFiltered = handlers.filter { (_, function) -> function.name == command }
+    val handlersFiltered = handlers.filter { (_, function) -> function.name == commandName }
         .takeIf { it.isNotEmpty() }
         ?: run {
             context.replyAsync(
                 failureEmbed(context.jda)
-                    .appendDescription("No command with the name `${command}` was found")
+                    .appendDescription("No command with the name `${commandName}` was found")
                     .build()
             )
             return false
@@ -217,7 +218,7 @@ suspend fun dispatch(
         bestMatches.isEmpty() -> {
             context.replyAsync(
                 failureEmbed(context.jda)
-                    .appendDescription("No handler for command '$command' accepts the provided arguments.")
+                    .appendDescription("No handler for command '$commandName' accepts the provided arguments.")
                     .build()
             )
             return false
@@ -234,18 +235,17 @@ suspend fun dispatch(
             // Match found
             val match = bestMatches.single()
 
-            val (functionPair, matchedArguments) = match
-            val (receiver, function) = functionPair
+            val (command, matchedArguments) = match
             val invokeArguments = matchedArguments.toMutableMap()
 
-            for (parameter in function.parameters) {
+            for (parameter in command.function.parameters) {
                 if (parameter.kind == KParameter.Kind.INSTANCE || parameter.kind == KParameter.Kind.EXTENSION_RECEIVER)
-                    invokeArguments[parameter] = Pair(receiver, 0)
+                    invokeArguments[parameter] = Pair(command.receiver, 0)
                 else if (parameter.type.jvmErasure == CommandContext::class)
                     invokeArguments[parameter] = Pair(context, 0)
             }
 
-            function.callSuspendBy(invokeArguments.mapValues { it.value.first })
+            command.function.callSuspendBy(invokeArguments.mapValues { it.value.first })
 
             return true
         }

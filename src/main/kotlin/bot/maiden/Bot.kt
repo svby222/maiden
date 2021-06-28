@@ -24,10 +24,9 @@ import java.lang.reflect.InvocationTargetException
 import java.util.*
 import kotlin.properties.Delegates
 import kotlin.reflect.KFunction
-import kotlin.reflect.KParameter
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
-import kotlin.reflect.jvm.jvmErasure
 
 private val DEFAULT_STATUS = "m!help"
 
@@ -56,9 +55,18 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
 
     lateinit var jda: JDA
 
+    data class RegisteredCommand(
+        val module: Module,
+        val function: KFunction<*>,
+        val receiver: Any? = module,
+    ) {
+        val name = function.findAnnotation<Command>()?.name?.takeIf { it.isNotBlank() } ?: function.name
+        val helpText = function.findAnnotation<HelpText>()
+    }
+
     private val scope = CoroutineScope(Dispatchers.Default)
     private val _modules = mutableListOf<Module>()
-    internal var _commands = emptyList<Pair<Module, KFunction<*>>>()
+    internal var _commands = emptyList<RegisteredCommand>()
 
     val modules get() = Collections.unmodifiableList(_modules)
     val commands get() = Collections.unmodifiableList(_commands)
@@ -91,10 +99,8 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
         _commands = this._modules
             .flatMap { `object` -> `object`::class.functions.map { function -> Pair(`object`, function) } }
             .filter { (_, function) -> function.hasAnnotation<Command>() }
-            .filter { (_, function) ->
-                function.parameters
-                    .firstOrNull { it.kind == KParameter.Kind.VALUE }
-                    ?.type?.jvmErasure == CommandContext::class
+            .map {
+                RegisteredCommand(it.first, it.second)
             }
     }
 

@@ -13,7 +13,6 @@ import java.math.BigInteger
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import kotlin.reflect.KFunction
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
@@ -160,21 +159,20 @@ object Administration : Module {
         group = "basic"
     )
     suspend fun help(context: CommandContext, command: String) {
-        val commands = context.commands.filter { it.second.name.equals(command, ignoreCase = true) }
-            .map { it.second }
+        val commands = context.commands.filter { it.name.equals(command, ignoreCase = true) }
 
         if (commands.isEmpty()) {
             context.replyAsync("That command doesn't seem to exist.")
             return
         }
 
-        fun createDisplayTitle(function: KFunction<*>): String {
-            val parameters = function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
+        fun createDisplayTitle(command: Bot.RegisteredCommand): String {
+            val parameters = command.function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
 
             return buildString {
                 append("`")
                 append("m!")
-                append(function.name)
+                append(command.name)
 
                 if (parameters.isNotEmpty()) {
                     append(" ")
@@ -207,26 +205,25 @@ object Administration : Module {
                 .setTitle("About $command")
                 .apply {
                     // TODO this is suboptimal; try caching on startup
-                    val related = mutableSetOf<KFunction<*>>()
+                    val related = mutableSetOf<Bot.RegisteredCommand>()
 
-                    for ((i, overload) in commands.withIndex()) {
-                        val displayTitle = createDisplayTitle(overload)
+                    for ((i, command) in commands.withIndex()) {
+                        val displayTitle = createDisplayTitle(command)
 
                         addField(
                             if (commands.size == 1) displayTitle
                             else "#${i + 1}: $displayTitle",
-                            overload.findAnnotation<HelpText>()?.summary ?: "_No help text available._",
+                            command.helpText?.summary ?: "_No help text available._",
                             false
                         )
 
                         // Find other commands with the same group
-                        overload.findAnnotation<HelpText>()?.group?.takeIf { it.isNotBlank() }
+                        command.helpText?.group?.takeIf { it.isNotBlank() }
                             ?.let { groupName ->
 
                                 related.addAll(
                                     context.commands.asSequence()
-                                        .filter { it.second.findAnnotation<HelpText>()?.group == groupName }
-                                        .map { it.second }
+                                        .filter { it.helpText?.group == groupName }
                                         .toList()
                                 )
                             }
@@ -236,10 +233,10 @@ object Administration : Module {
 
                     if (relatedFiltered.isNotEmpty()) {
                         addField("Related commands", buildString {
-                            for (overload in relatedFiltered) {
-                                append(createDisplayTitle(overload))
+                            for (command in relatedFiltered) {
+                                append(createDisplayTitle(command))
                                 append(": ")
-                                overload.findAnnotation<HelpText>()?.summary?.let { append(it) }
+                                command.helpText?.summary?.let { append(it) }
                                 appendLine()
                             }
                         }, false)
