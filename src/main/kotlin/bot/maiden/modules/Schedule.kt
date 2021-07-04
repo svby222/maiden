@@ -7,7 +7,6 @@ import bot.maiden.utilities.multistepDialog
 import kotlinx.coroutines.*
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.exceptions.ErrorResponseException
-import net.dv8tion.jda.api.interactions.components.Button
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.time.Instant
@@ -223,6 +222,16 @@ object Schedule : Module {
         group = "schedule"
     )
     suspend fun `clear-scheduled`(context: CommandContext) {
+        context.requester ?: return
+
+        if (!context.requester.isOwner(context.bot) &&
+            context.guild.getMember(context.requester)?.permissions?.contains(Permission.ADMINISTRATOR) != true
+        ) {
+            // TODO actual permission handling
+            context.replyAsync("You can't do that (not an administrator)")
+            return
+        }
+
         val count = context.bot.database.withSession {
             it.beginTransaction().let { tx ->
                 val result = it.createQuery("delete from GuildScheduledEvent where guild_id = :guild_id")
