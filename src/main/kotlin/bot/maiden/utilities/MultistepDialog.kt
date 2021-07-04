@@ -1,7 +1,10 @@
 package bot.maiden.utilities
 
-class MultistepDialog(val steps: List<Step>, val finishHandler: suspend () -> Unit) {
+import bot.maiden.modules.Dialog
+
+class MultistepDialog(val title: String?, val steps: List<Step>, val finishHandler: suspend () -> Unit) {
     enum class StepResult {
+        Fallthrough,
         Previous,
         Next,
         Cancel,
@@ -9,9 +12,11 @@ class MultistepDialog(val steps: List<Step>, val finishHandler: suspend () -> Un
     }
 
     class Step(
+        val title: String?,
         val text: String?,
+        val optionsText: String?,
         val options: List<Pair<String, Any?>>,
-        val handler: suspend (String, Any?) -> StepResult
+        val handlers: List<suspend (String, Any?) -> StepResult>
     )
 }
 
@@ -20,6 +25,8 @@ internal annotation class MultistepDialogDsl
 
 @MultistepDialogDsl
 class MultistepDialogBuilder {
+    var title: String? = null
+
     private val steps = mutableListOf<MultistepDialog.Step>()
     private var finishHandler: suspend () -> Unit = { }
 
@@ -33,15 +40,18 @@ class MultistepDialogBuilder {
         return this
     }
 
-    fun build() = MultistepDialog(steps, finishHandler)
+    fun build() = MultistepDialog(title, steps, finishHandler)
 }
 
 @MultistepDialogDsl
 class StepBuilder {
+    var title: String? = null
+
     var text: String? = null
+    var optionsText: String? = null
     var options = mutableListOf<Pair<String, Any?>>()
-    private var handler: suspend (String, Any?) -> MultistepDialog.StepResult =
-        { _, _ -> MultistepDialog.StepResult.Next }
+
+    val handlers = mutableListOf<suspend (String, Any?) -> MultistepDialog.StepResult>()
 
     fun option(text: String, data: Any = text): StepBuilder {
         options.add(Pair(text, data))
@@ -49,16 +59,20 @@ class StepBuilder {
     }
 
     fun otherOption(text: String): StepBuilder {
-        options.add(Pair(text, null))
+        options.add(Pair(text, Dialog.OtherData))
         return this
     }
 
     fun onResponse(handler: suspend (text: String, data: Any?) -> MultistepDialog.StepResult): StepBuilder {
-        this.handler = handler
+        handlers += handler
         return this
     }
 
-    fun build() = MultistepDialog.Step(text, options, handler)
+    fun cancelOption(cancelText: String = "cancel") {
+        options.add(0, Pair(cancelText, Dialog.CancelData))
+    }
+
+    fun build() = MultistepDialog.Step(title, text, optionsText, options, handlers)
 }
 
 fun multistepDialog(configure: MultistepDialogBuilder.() -> Unit): MultistepDialog {

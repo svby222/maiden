@@ -7,6 +7,7 @@ import bot.maiden.utilities.multistepDialog
 import kotlinx.coroutines.*
 import net.dv8tion.jda.api.Permission
 import net.dv8tion.jda.api.exceptions.ErrorResponseException
+import net.dv8tion.jda.api.interactions.components.Button
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.time.Instant
@@ -150,17 +151,23 @@ object Schedule : Module {
         val trimmed = (if (command.startsWith("m!")) command.substring(2) else command).trim()
 
         val dialog = multistepDialog {
+            title = "Scheduler"
+
             var interval = 0L
 
             step {
+                title = "`$trimmed`"
+
                 text = """
                     How often should that command be executed?
-                    
-                    Every...
-                    
-                    (enter interval in the format `_ d _ h _ m`)
+                """.trimIndent()
+
+                optionsText = """
+                    Enter the interval in the format `x days x hours x minutes`.
                     **Note: the minimum interval is 3 hours.**
                 """.trimIndent()
+
+                cancelOption("cancel")
 
                 onResponse { _, data ->
                     val matches = INTERVAL_REGEX.matchEntire(data as String)

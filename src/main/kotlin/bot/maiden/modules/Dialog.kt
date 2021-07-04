@@ -23,8 +23,13 @@ object Dialog : Module {
         val requesterId: Long
     )
 
+    object OtherData
+    object CancelData
+
     private val scope = CoroutineScope(Dispatchers.Default)
     private val currentDialogs = ConcurrentHashMap<Long, ScheduledDialog>()
+
+    private fun isSpecialOptionData(data: Any?) = data in listOf(OtherData, CancelData)
 
     fun beginDialog(channel: MessageChannel, requester: User, dialog: MultistepDialog): Boolean {
         if (dialog.steps.isEmpty()) return false
@@ -44,16 +49,38 @@ object Dialog : Module {
         suspend fun sendStep(step: MultistepDialog.Step) {
             channel.sendMessage(
                 EmbedBuilder()
+                    .apply {
+                        val titleElements = listOfNotNull(dialog.title, step.title)
+                        val title = if (titleElements.isEmpty()) "Dialog" else titleElements.joinToString(" / ")
+                        setTitle(title)
+                    }
                     .setDescription(step.text)
                     .apply {
-                        if (step.options.isNotEmpty()) {
+                        if (!step.optionsText.isNullOrEmpty() || step.options.isNotEmpty()) {
                             addField(
                                 "Options",
-                                step.options
-                                    .mapIndexed { index, pair -> Pair(index + 1, pair.first) }
-                                    .joinToString("\n") { (_, text) -> " •  $text" },
+                                buildString {
+                                    step.optionsText?.let {
+                                        append(it)
+                                        append("\n\n")
+                                    }
+
+                                    append(step.options
+                                        .filter {
+                                            // Don't show cancel options in list
+                                            it.second !in listOf(CancelData)
+                                        }
+                                        .mapIndexed { index, pair -> Pair(index + 1, pair.first) }
+                                        .joinToString("\n") { (_, text) -> " •  $text" })
+                                },
                                 false
                             )
+                        }
+                    }
+                    .apply {
+                        val cancelOption = step.options.firstOrNull { it.second == CancelData }
+                        cancelOption?.let {
+                            setFooter("Type \"${it.first}\" to cancel.")
                         }
                     }
                     .build()
@@ -65,6 +92,8 @@ object Dialog : Module {
             sendStep(dialog.steps[stepIndex])
 
             try {
+                var canceled = false
+
                 for (message in messageChannel) {
                     val step = dialog.steps[stepIndex]
 
@@ -73,12 +102,12 @@ object Dialog : Module {
                         step.options.firstOrNull { it.first.equals(response, ignoreCase = true) }
                             ?: run {
                                 // "Other" option
-                                step.options.firstOrNull { it.second == null }
+                                step.options.firstOrNull { it.second == OtherData }
                             }
 
                     val (text, optionData) =
                         if (option == null) {
-                            if (step.options.isNotEmpty()) {
+                            if (step.options.all { !isSpecialOptionData(it.second) }) {
                                 channel.sendMessage("Invalid option").await()
                                 continue
                             } else Pair(response, response)
@@ -89,7 +118,18 @@ object Dialog : Module {
                             )
                         }
 
-                    when (step.handler(text, optionData)) {
+                    if (optionData == CancelData) {
+                        canceled = true
+                        break
+                    }
+
+                    var result = MultistepDialog.StepResult.Fallthrough
+                    for (handler in step.handlers) {
+                        result = handler(text, optionData)
+                        if (result != MultistepDialog.StepResult.Fallthrough) break
+                    }
+
+                    when (result) {
                         MultistepDialog.StepResult.Previous -> {
                             stepIndex = max(0, stepIndex - 1)
                         }
@@ -97,11 +137,12 @@ object Dialog : Module {
                             stepIndex++
                         }
                         MultistepDialog.StepResult.Cancel -> {
+                            canceled = true
                             break
                         }
-                        MultistepDialog.StepResult.Invalid -> {
+                        MultistepDialog.StepResult.Fallthrough, MultistepDialog.StepResult.Invalid -> {
                             // TODO
-                            channel.sendMessage("Invalid option result").await()
+                            channel.sendMessage("Invalid response").await()
                             continue
                         }
                     }
@@ -112,7 +153,10 @@ object Dialog : Module {
                     }
 
                     sendStep(dialog.steps[stepIndex])
+                }
 
+                if (canceled) {
+                    channel.sendMessage("Canceled dialog.").await()
                 }
             } finally {
                 currentDialogs.remove(channel.idLong)
