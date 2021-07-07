@@ -5,6 +5,7 @@ import bot.maiden.await
 import bot.maiden.awaitFirstMatching
 import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
@@ -29,6 +30,7 @@ class DialogStepModal(
         val optionsText: String?,
 
         val options: List<StepOption>,
+        val useIcons: Boolean = true,
 
         val optionMode: OptionMode
     ) : Step {
@@ -39,12 +41,19 @@ class DialogStepModal(
         }
 
         internal constructor(builder: DialogStepBuilder)
-                : this(builder.title, builder.mainText, builder.optionsText, builder.options, builder.optionMode)
+                : this(
+            builder.title,
+            builder.mainText,
+            builder.optionsText,
+            builder.options,
+            builder.useIcons,
+            builder.optionMode
+        )
     }
 
     data class StepOption(
         val text: String,
-        val icon: String? = null,
+        val icon: Emoji? = null,
         val data: Any = text
     ) {
         object CancelData
@@ -82,6 +91,7 @@ class DialogStepBuilder(
     var mainText: String? = null,
     var optionsText: String? = null,
 
+    var useIcons: Boolean = true,
     var optionMode: DialogStepModal.DialogStep.OptionMode = DialogStepModal.DialogStep.OptionMode.Buttons,
 
     val options: MutableList<DialogStepModal.StepOption> = mutableListOf()
@@ -167,14 +177,31 @@ class DialogStepBuilder(
                                 )
                                 .setDescription(mainText)
                                 .apply {
-                                    optionsText?.let { addField("Options", optionsText, false) }
+                                    if (!useIcons) {
+                                        optionsText?.let { addField("Options", optionsText, false) }
+                                    } else {
+                                        if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
+                                            val parts = listOfNotNull(
+                                                optionsText,
+                                                options.takeIf { it.isNotEmpty() }
+                                                    ?.map { " ${it.icon?.asMention ?: "•"}  ${it.text}" }
+                                                    ?.joinToString("\n")
+                                            )
+                                            if (parts.isNotEmpty()) {
+                                                addField("Options", parts.joinToString("\n\n"), false)
+                                            }
+                                        }
+                                    }
                                 }
                                 .build()
                         ) {
                             if (options.isNotEmpty()) {
                                 setActionRow(
                                     options.map {
-                                        Button.secondary("${context.channel.idLong}:${it.data}", it.text)
+                                        val buttonId = "${context.channel.idLong}:${it.data}"
+
+                                        it.icon?.takeIf { useIcons }?.let { Button.secondary(buttonId, it) }
+                                            ?: Button.secondary(buttonId, it.text)
                                     }
                                 )
                             }

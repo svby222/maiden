@@ -5,6 +5,7 @@ import bot.maiden.modules.modal.DialogStepModal
 import bot.maiden.modules.modal.Modals
 import bot.maiden.modules.modal.StepModal
 import bot.maiden.modules.modal.buildDialog
+import net.dv8tion.jda.api.entities.Emoji
 
 object Test : Module {
     @Command
@@ -66,8 +67,8 @@ object Test : Module {
                         optionsText = "Pick an option:"
                         optionMode = DialogStepModal.DialogStep.OptionMode.Buttons
 
-                        option(DialogStepModal.StepOption("Option 1", data = "A"))
-                        option(DialogStepModal.StepOption("Option 2", data = "B"))
+                        option(DialogStepModal.StepOption("Option 1", icon = Emoji.fromMarkdown("🅰️"), data = "A"))
+                        option(DialogStepModal.StepOption("Option 2", icon = Emoji.fromMarkdown("🅱️"), data = "B"))
 
                         onComplete { option, _ ->
                             selected = option.data.toString()
