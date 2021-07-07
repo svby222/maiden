@@ -4,6 +4,7 @@ import bot.maiden.common.*
 import bot.maiden.modules.Common.COMMAND_PARAMETER_PREDICATE
 import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.*
+import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.requests.restaction.MessageAction
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
@@ -25,6 +26,7 @@ interface Module : AutoCloseable {
     suspend fun initialize(bot: Bot) = Unit
     override fun close() = Unit
 
+    suspend fun onEvent(event: GenericEvent): Boolean = true
     suspend fun onMessage(message: Message): Boolean = true
 }
 

@@ -1,6 +1,7 @@
 package bot.maiden
 
 import bot.maiden.modules.*
+import bot.maiden.modules.modal.Modals
 import com.typesafe.config.ConfigFactory
 import org.slf4j.LoggerFactory
 import kotlin.io.path.Path
@@ -18,6 +19,7 @@ fun main(args: Array<String>) {
     val bot = Bot.create(config)
     bot.addModules(
         listOf(
+            Modals,
             Dialog,
 
             Administration,

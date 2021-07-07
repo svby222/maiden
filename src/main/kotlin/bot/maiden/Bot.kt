@@ -117,6 +117,11 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     }
 
     private suspend fun onEvent(event: GenericEvent) {
+        // Don't fire for ReadyEvents
+        if (event !is ReadyEvent) {
+            modules.forEach { it.onEvent(event) }
+        }
+
         when (event) {
             is ReadyEvent -> {
                 """
