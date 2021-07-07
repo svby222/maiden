@@ -34,6 +34,11 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     val config = config.withoutPath("maiden.core.discord.botToken")
     lateinit var database: Database
 
+    val isDebug by lazy {
+        if (config.hasPath("maiden.core.debug")) config.getBoolean("maiden.core.debug")
+        else false
+    }
+
     val ownerId by lazy { config.getLong("maiden.core.ownerId") }
 
     var motd: String? by Delegates.observable(null) { _, _, value ->
@@ -118,7 +123,9 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
 
     private suspend fun onEvent(event: GenericEvent) {
         // Don't fire for ReadyEvents
-        if (event !is ReadyEvent) {
+        // Don't fire for MessageReceivedEvent either, since that is being filtered below
+        // TODO rewrite?
+        if (event !is ReadyEvent && event !is MessageReceivedEvent) {
             modules.forEach { it.onEvent(event) }
         }
 
@@ -199,6 +206,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
                             ).await()
                         }
                     } else {
+                        _modules.forEach { it.onEvent(event) }
                         for (it in _modules) {
                             if (!it.onMessage(event.message)) break
                         }

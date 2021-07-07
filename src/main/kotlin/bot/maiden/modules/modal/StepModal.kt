@@ -1,8 +1,9 @@
 package bot.maiden.modules.modal
 
 import bot.maiden.CommandContext
+import bot.maiden.await
 import kotlinx.coroutines.channels.ReceiveChannel
-import net.dv8tion.jda.api.events.message.GenericMessageEvent
+import net.dv8tion.jda.api.events.GenericEvent
 
 open class StepModal(val steps: List<Step>) {
     sealed class StepResult {
@@ -15,10 +16,10 @@ open class StepModal(val steps: List<Step>) {
     }
 
     fun interface Step {
-        suspend fun accept(context: CommandContext, messages: ReceiveChannel<GenericMessageEvent>): StepResult
+        suspend fun accept(context: CommandContext, messages: ReceiveChannel<GenericEvent>): StepResult
     }
 
-    suspend fun start(context: CommandContext, messages: ReceiveChannel<GenericMessageEvent>) {
+    suspend fun start(context: CommandContext, messages: ReceiveChannel<GenericEvent>) {
         var currentStep = steps.first()
 
         while (true) {
@@ -26,19 +27,21 @@ open class StepModal(val steps: List<Step>) {
 
             when (result) {
                 StepResult.Cancel -> {
-                    context.replyAsync("Cancelled")
+                    context.channel.sendMessage("Canceled").await()
                     break
                 }
                 StepResult.Finish -> break
                 StepResult.GotoNext -> {
                     // TODO error handling
                     val currentIndex = steps.lastIndexOf(currentStep)
+                    if (currentIndex == steps.lastIndex) break
+
                     currentStep = steps[currentIndex + 1]
                 }
                 is StepResult.GotoIndex -> currentStep = steps[result.index]
                 is StepResult.GotoStep -> currentStep = result.step
                 StepResult.Invalid -> {
-                    context.replyAsync("Invalid")
+                    context.channel.sendMessage("Invalid response").await()
                     continue
                 }
             }

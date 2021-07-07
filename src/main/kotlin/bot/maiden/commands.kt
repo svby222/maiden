@@ -26,7 +26,7 @@ interface Module : AutoCloseable {
     suspend fun initialize(bot: Bot) = Unit
     override fun close() = Unit
 
-    suspend fun onEvent(event: GenericEvent): Boolean = true
+    suspend fun onEvent(event: GenericEvent) = Unit
     suspend fun onMessage(message: Message): Boolean = true
 }
 

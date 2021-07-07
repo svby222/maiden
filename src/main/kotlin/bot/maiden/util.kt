@@ -1,5 +1,6 @@
 package bot.maiden
 
+import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.requests.RestAction
 import java.net.URLEncoder
 import java.time.Duration
@@ -30,4 +31,12 @@ fun Duration.toPrettyString(): String {
         if (value.toLong() != 0L) "$value $suffix"
         else null
     }.joinToString(" ")
+}
+
+suspend inline fun <T> ReceiveChannel<T>.awaitFirstMatching(predicate: (T) -> Boolean): T {
+    for (item in this) {
+        if (predicate(item)) return item
+    }
+
+    throw NoSuchElementException("No element matching the given predicate was received, or ReceiveChannel was closed")
 }

@@ -2,14 +2,13 @@ package bot.maiden.modules.modal
 
 import bot.maiden.CommandContext
 import bot.maiden.Module
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.launch
+import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.entities.MessageChannel
 import net.dv8tion.jda.api.events.GenericEvent
+import net.dv8tion.jda.api.events.interaction.ButtonClickEvent
 import net.dv8tion.jda.api.events.message.GenericMessageEvent
 import java.util.concurrent.ConcurrentHashMap
 
@@ -17,17 +16,20 @@ object Modals : Module {
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private data class ModalData(
-        val dataChannel: SendChannel<GenericMessageEvent>,
+        val dataChannel: SendChannel<GenericEvent>,
         val context: CommandContext,
         val modal: StepModal
     )
 
     private val activeModals = ConcurrentHashMap<Long, ModalData>()
 
-    fun beginModal(channel: MessageChannel, context: CommandContext, modal: StepModal) {
-        if (modal.steps.isEmpty()) return
+    fun beginModal(channel: MessageChannel, context: CommandContext, modal: StepModal): Job {
+        // TODO error: require requester?
+        context.requester!!
 
-        val dataChannel = Channel<GenericMessageEvent>()
+        if (modal.steps.isEmpty()) return Job().apply { complete() }
+
+        val dataChannel = Channel<GenericEvent>()
         val data = ModalData(
             dataChannel,
             context,
@@ -37,10 +39,13 @@ object Modals : Module {
         if (activeModals.putIfAbsent(channel.idLong, data) != null) {
             // There is already an active modal in this channel
             dataChannel.close()
-            return
+
+            return Job().apply {
+                completeExceptionally(IllegalStateException("There is already an active modal for channel ${channel.idLong}"))
+            }
         }
 
-        scope.launch {
+        return scope.launch {
             try {
                 modal.start(context, dataChannel)
             } catch (e: Exception) {
@@ -51,15 +56,29 @@ object Modals : Module {
         }
     }
 
-    override suspend fun onEvent(event: GenericEvent): Boolean {
-        if (event !is GenericMessageEvent) return true
+    override suspend fun onEvent(event: GenericEvent) {
+        // TODO
+        // Only send these event types for now
+        val channel = when (event) {
+            is GenericMessageEvent -> event.channel
+            is ButtonClickEvent -> event.channel
+            else -> return
+        }
 
-        val data = activeModals[event.channel.idLong] ?: return true
+        val data = activeModals[channel.idLong] ?: return
 
-        if (event.channel.idLong == data.context.channel.idLong) {
+        if (channel.idLong == data.context.channel.idLong) {
             data.dataChannel.send(event)
-            return false
-        } else return true
+            return
+        } else return
+    }
+
+    override suspend fun onMessage(message: Message): Boolean {
+        val requesterId = activeModals[message.channel.idLong]?.context?.requester?.idLong
+
+        // Ignore messages from current modal requester
+        if (requesterId == message.author.idLong) return false
+        return true
     }
 
     override fun close() {
