@@ -6,6 +6,8 @@ import bot.maiden.modules.modal.Modals
 import bot.maiden.modules.modal.StepModal
 import bot.maiden.modules.modal.buildDialog
 import net.dv8tion.jda.api.entities.Emoji
+import kotlin.math.max
+import kotlin.math.min
 
 object Test : Module {
     @Command
@@ -81,6 +83,46 @@ object Test : Module {
                         title = "Results"
 
                         mainText = "You picked option $selected"
+                    }
+                }
+
+                Modals.beginModal(context.channel, context, modal)
+                    .join()
+            }
+            "paginate1" -> {
+                val items = (1..100).toList()
+                val chunks = items.chunked(10)
+
+                var chunkIndex = 0
+
+                val modal = buildDialog {
+                    title = "Pagination test"
+
+                    addStep(dynamic = true) {
+                        replacePrevious = true
+
+                        val previous = option(
+                            DialogStepModal.StepOption("Previous", icon = Emoji.fromMarkdown("⬅️"), data = "previous")
+                        )
+                        val next =
+                            option(
+                                DialogStepModal.StepOption("Next", icon = Emoji.fromMarkdown("➡️"), data = "next")
+                            )
+
+                        mainText = chunks[chunkIndex].joinToString("\n", prefix = "```\n", postfix = "\n```")
+
+                        onComplete { option, _ ->
+                            when (option) {
+                                previous -> {
+                                    chunkIndex = max(0, chunkIndex - 1)
+                                }
+                                next -> {
+                                    chunkIndex = min(chunks.lastIndex, chunkIndex + 1)
+                                }
+                            }
+
+                            StepModal.StepResult.GotoCurrent
+                        }
                     }
                 }
 

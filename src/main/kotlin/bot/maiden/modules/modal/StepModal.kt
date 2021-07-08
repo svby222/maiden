@@ -8,6 +8,7 @@ import net.dv8tion.jda.api.events.GenericEvent
 open class StepModal(val steps: List<Step>) {
     sealed class StepResult {
         object GotoNext : StepResult()
+        object GotoCurrent : StepResult()
         object Finish : StepResult()
         object Cancel : StepResult()
         object Invalid : StepResult()
@@ -16,14 +17,18 @@ open class StepModal(val steps: List<Step>) {
     }
 
     fun interface Step {
-        suspend fun accept(context: CommandContext, messages: ReceiveChannel<GenericEvent>): StepResult
+        suspend fun accept(
+            context: CommandContext,
+            modal: StepModal,
+            messages: ReceiveChannel<GenericEvent>
+        ): StepResult
     }
 
     suspend fun start(context: CommandContext, messages: ReceiveChannel<GenericEvent>) {
         var currentStep = steps.first()
 
         while (true) {
-            val result = currentStep.accept(context, messages)
+            val result = currentStep.accept(context, this, messages)
 
             when (result) {
                 StepResult.Cancel -> {
@@ -38,6 +43,7 @@ open class StepModal(val steps: List<Step>) {
 
                     currentStep = steps[currentIndex + 1]
                 }
+                StepResult.GotoCurrent -> Unit
                 is StepResult.GotoIndex -> currentStep = steps[result.index]
                 is StepResult.GotoStep -> currentStep = result.step
                 StepResult.Invalid -> {

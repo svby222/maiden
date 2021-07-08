@@ -6,9 +6,11 @@ import bot.maiden.awaitFirstMatching
 import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.entities.Emoji
+import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.events.GenericEvent
 import net.dv8tion.jda.api.events.interaction.ButtonClickEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
+import net.dv8tion.jda.api.interactions.components.ActionRow
 import net.dv8tion.jda.api.interactions.components.Button
 
 class DialogStepModal(
@@ -20,9 +22,12 @@ class DialogStepModal(
 
         override suspend fun accept(
             context: CommandContext,
+            modal: StepModal,
             messages: ReceiveChannel<GenericEvent>
-        ): StepResult = getStep().accept(context, messages)
+        ): StepResult = getStep().accept(context, modal, messages)
     }
+
+    internal var lastMessage: Message? = null
 
     abstract class DialogStep(
         val title: String?,
@@ -71,15 +76,13 @@ class DialogStepModalBuilder(
 ) {
     @DialogStepModalBuilderDsl
     fun addStep(dynamic: Boolean = false, block: DialogStepBuilder.() -> Unit) {
-        val builder = DialogStepBuilder().apply(block)
-
         val step = if (dynamic) {
             DialogStepModal.LazyDialogStep {
-                DialogStepBuilder().apply(block).buildStatic(this@DialogStepModalBuilder)
+                DialogStepBuilder().apply(block).buildStatic()
             }
         } else {
             // Pre-build
-            val static = DialogStepBuilder().apply(block).buildStatic(this@DialogStepModalBuilder)
+            val static = DialogStepBuilder().apply(block).buildStatic()
             DialogStepModal.LazyDialogStep { static }
         }
         steps.add(step)
@@ -90,6 +93,7 @@ class DialogStepBuilder(
     var title: String? = null,
     var mainText: String? = null,
     var optionsText: String? = null,
+    var replacePrevious: Boolean = false,
 
     var useIcons: Boolean = true,
     var optionMode: DialogStepModal.DialogStep.OptionMode = DialogStepModal.DialogStep.OptionMode.Buttons,
@@ -103,11 +107,12 @@ class DialogStepBuilder(
         this.onComplete = action
     }
 
-    fun option(option: DialogStepModal.StepOption) {
+    fun option(option: DialogStepModal.StepOption): DialogStepModal.StepOption {
         options.add(option)
+        return option
     }
 
-    fun buildStatic(modalBuilder: DialogStepModalBuilder): DialogStepModal.DialogStep {
+    fun buildStatic(): DialogStepModal.DialogStep {
         val onComplete = this.onComplete
 
         when (optionMode) {
@@ -115,30 +120,38 @@ class DialogStepBuilder(
                 return object : DialogStepModal.DialogStep(this) {
                     override suspend fun accept(
                         context: CommandContext,
+                        modal: StepModal,
                         messages: ReceiveChannel<GenericEvent>
                     ): StepModal.StepResult {
-                        context.replyAsync(
-                            EmbedBuilder()
-                                .setTitle(
-                                    listOfNotNull(modalBuilder.title, this.title)
-                                        .joinToString(" / ")
-                                )
-                                .setDescription(mainText)
-                                .apply {
-                                    if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
-                                        val parts = listOfNotNull(
-                                            optionsText,
-                                            options.takeIf { it.isNotEmpty() }
-                                                ?.map { " •  ${it.text}" }
-                                                ?.joinToString("\n")
-                                        )
-                                        if (parts.isNotEmpty()) {
-                                            addField("Options", parts.joinToString("\n\n"), false)
-                                        }
+                        modal as? DialogStepModal
+                            ?: throw AssertionError("DialogStep must only be used with DialogStepModal")
+
+                        val newEmbed = EmbedBuilder()
+                            .setTitle(
+                                listOfNotNull(modal.title, this.title)
+                                    .joinToString(" / ")
+                            )
+                            .setDescription(mainText)
+                            .apply {
+                                if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
+                                    val parts = listOfNotNull(
+                                        optionsText,
+                                        options.takeIf { it.isNotEmpty() }
+                                            ?.map { " •  ${it.text}" }
+                                            ?.joinToString("\n")
+                                    )
+                                    if (parts.isNotEmpty()) {
+                                        addField("Options", parts.joinToString("\n\n"), false)
                                     }
                                 }
-                                .build()
-                        )
+                            }
+                            .build()
+
+                        val message = modal.lastMessage?.takeIf { replacePrevious }
+                            ?.editMessage(newEmbed)?.setActionRows(emptyList())?.await()
+                            ?: context.replyAsync(newEmbed) { setActionRows(emptyList()) }
+
+                        modal.lastMessage = message
 
                         if (options.isEmpty()) return StepModal.StepResult.GotoNext
 
@@ -167,36 +180,41 @@ class DialogStepBuilder(
                 return object : DialogStepModal.DialogStep(this) {
                     override suspend fun accept(
                         context: CommandContext,
+                        modal: StepModal,
                         messages: ReceiveChannel<GenericEvent>
                     ): StepModal.StepResult {
-                        val message = context.replyAsync(
-                            EmbedBuilder()
-                                .setTitle(
-                                    listOfNotNull(modalBuilder.title, this.title)
-                                        .joinToString(" / ")
-                                )
-                                .setDescription(mainText)
-                                .apply {
-                                    if (!useIcons) {
-                                        optionsText?.let { addField("Options", optionsText, false) }
-                                    } else {
-                                        if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
-                                            val parts = listOfNotNull(
-                                                optionsText,
-                                                options.takeIf { it.isNotEmpty() }
-                                                    ?.map { " ${it.icon?.asMention ?: "•"}  ${it.text}" }
-                                                    ?.joinToString("\n")
-                                            )
-                                            if (parts.isNotEmpty()) {
-                                                addField("Options", parts.joinToString("\n\n"), false)
-                                            }
+                        modal as? DialogStepModal
+                            ?: throw AssertionError("DialogStep must only be used with DialogStepModal")
+
+                        val newEmbed = EmbedBuilder()
+                            .setTitle(
+                                listOfNotNull(modal.title, this.title)
+                                    .joinToString(" / ")
+                            )
+                            .setDescription(mainText)
+                            .apply {
+                                if (!useIcons) {
+                                    optionsText?.let { addField("Options", optionsText, false) }
+                                } else {
+                                    if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
+                                        val parts = listOfNotNull(
+                                            optionsText,
+                                            options.takeIf { it.isNotEmpty() }
+                                                ?.map { " ${it.icon?.asMention ?: "•"}  ${it.text}" }
+                                                ?.joinToString("\n")
+                                        )
+                                        if (parts.isNotEmpty()) {
+                                            addField("Options", parts.joinToString("\n\n"), false)
                                         }
                                     }
                                 }
-                                .build()
-                        ) {
-                            if (options.isNotEmpty()) {
-                                setActionRow(
+                            }
+                            .build()
+
+                        val newActionRows =
+                            if (options.isEmpty()) emptyList()
+                            else listOf(
+                                ActionRow.of(
                                     options.map {
                                         val buttonId = "${context.channel.idLong}:${it.data}"
 
@@ -204,8 +222,13 @@ class DialogStepBuilder(
                                             ?: Button.secondary(buttonId, it.text)
                                     }
                                 )
-                            }
-                        }
+                            )
+
+                        val message = modal.lastMessage?.takeIf { replacePrevious }
+                            ?.editMessage(newEmbed)?.setActionRows(newActionRows)?.await()
+                            ?: context.replyAsync(newEmbed) { setActionRows(newActionRows) }
+
+                        modal.lastMessage = message
 
                         if (options.isEmpty()) return StepModal.StepResult.GotoNext
 
