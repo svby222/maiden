@@ -5,6 +5,7 @@ import bot.maiden.await
 import bot.maiden.awaitFirstMatching
 import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.EmbedBuilder
+import net.dv8tion.jda.api.MessageBuilder
 import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.entities.Message
 import net.dv8tion.jda.api.events.GenericEvent
@@ -12,6 +13,7 @@ import net.dv8tion.jda.api.events.interaction.ButtonClickEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.interactions.components.ActionRow
 import net.dv8tion.jda.api.interactions.components.Button
+import net.dv8tion.jda.api.interactions.components.ButtonStyle
 
 class DialogStepModal(
     val title: String,
@@ -59,8 +61,11 @@ class DialogStepModal(
     data class StepOption(
         val text: String,
         val icon: Emoji? = null,
-        val data: Any = text
+        val data: Any = text,
+
+        val buttonStyle: ButtonStyle = ButtonStyle.SECONDARY
     ) {
+        object FreeInputData
         object CancelData
     }
 
@@ -95,16 +100,24 @@ class DialogStepBuilder(
     var optionsText: String? = null,
     var replacePrevious: Boolean = false,
 
+    var defaultResult: StepModal.StepResult = StepModal.StepResult.GotoNext,
+
     var useIcons: Boolean = true,
     var optionMode: DialogStepModal.DialogStep.OptionMode = DialogStepModal.DialogStep.OptionMode.Buttons,
 
     val options: MutableList<DialogStepModal.StepOption> = mutableListOf()
 ) {
-    internal var onComplete: (DialogStepModal.StepOption, GenericEvent) -> StepModal.StepResult =
-        { _, _ -> StepModal.StepResult.GotoNext }
+    internal var embedAdapter: EmbedBuilder.() -> Unit = { Unit }
 
-    fun onComplete(action: (DialogStepModal.StepOption, GenericEvent) -> StepModal.StepResult) {
+    internal var onComplete: suspend (DialogStepModal.StepOption, String, GenericEvent) -> StepModal.StepResult =
+        { _, _, _ -> StepModal.StepResult.GotoNext }
+
+    fun onComplete(action: suspend (DialogStepModal.StepOption, String, GenericEvent) -> StepModal.StepResult) {
         this.onComplete = action
+    }
+
+    fun editEmbed(action: EmbedBuilder.() -> Unit) {
+        this.embedAdapter = action
     }
 
     fun option(option: DialogStepModal.StepOption): DialogStepModal.StepOption {
@@ -132,6 +145,7 @@ class DialogStepBuilder(
                                     .joinToString(" / ")
                             )
                             .setDescription(mainText)
+                            .apply(embedAdapter)
                             .apply {
                                 if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
                                     val parts = listOfNotNull(
@@ -151,22 +165,43 @@ class DialogStepBuilder(
                             ?.editMessage(newEmbed)?.setActionRows(emptyList())?.await()
                             ?: context.replyAsync(newEmbed) { setActionRows(emptyList()) }
 
-                        modal.lastMessage = message
+                        try {
+                            modal.lastMessage = message
 
-                        if (options.isEmpty()) return StepModal.StepResult.GotoNext
+                            if (options.isEmpty()) return defaultResult
 
-                        // TODO handle other event types
-                        val event = messages.awaitFirstMatching {
-                            it is MessageReceivedEvent && it.author.idLong == context.requester?.idLong
-                        } as MessageReceivedEvent
+                            // TODO handle other event types
+                            val event = messages.awaitFirstMatching {
+                                it is MessageReceivedEvent && it.author.idLong == context.requester?.idLong
+                            } as MessageReceivedEvent
 
-                        val selectedOption =
-                            options.firstOrNull { event.message.contentRaw.equals(it.text, ignoreCase = true) }
+                            val selectedOption =
+                                options.firstOrNull { event.message.contentRaw.equals(it.text, ignoreCase = true) }
 
-                        if (selectedOption == null) return StepModal.StepResult.Invalid
-                        else {
-                            val result = onComplete(selectedOption, event)
+                            val result = if (selectedOption == null) {
+                                val freeInputOption =
+                                    options.firstOrNull { it.data == DialogStepModal.StepOption.FreeInputData }
+                                if (freeInputOption == null) StepModal.StepResult.Invalid
+                                else onComplete(freeInputOption, event.message.contentRaw, event)
+                            } else {
+                                onComplete(selectedOption, event.message.contentRaw, event)
+                            }
                             return result
+                        } finally {
+                            val oldEmbed = message.embeds.first()
+
+                            val expiredEmbed = EmbedBuilder(oldEmbed)
+                                .apply {
+                                    val prefix = "🔒 "
+                                    val postfix = " (expired)"
+                                    val oldTitle =
+                                        (oldEmbed.title ?: "Dialog").take(256 - prefix.length - postfix.length)
+                                    setTitle("$prefix$oldTitle$postfix")
+                                }
+                                .build()
+                            message.editMessage(
+                                MessageBuilder(message).setEmbed(expiredEmbed).build()
+                            ).setActionRows(emptyList()).await()
                         }
                     }
                 }
@@ -192,6 +227,7 @@ class DialogStepBuilder(
                                     .joinToString(" / ")
                             )
                             .setDescription(mainText)
+                            .apply(embedAdapter)
                             .apply {
                                 if (!useIcons) {
                                     optionsText?.let { addField("Options", optionsText, false) }
@@ -218,8 +254,9 @@ class DialogStepBuilder(
                                     options.map {
                                         val buttonId = "${context.channel.idLong}:${it.data}"
 
-                                        it.icon?.takeIf { useIcons }?.let { Button.secondary(buttonId, it) }
-                                            ?: Button.secondary(buttonId, it.text)
+                                        it.icon?.takeIf { useIcons }
+                                            ?.let { icon -> Button.of(it.buttonStyle, buttonId, icon) }
+                                            ?: Button.of(it.buttonStyle, buttonId, it.text)
                                     }
                                 )
                             )
@@ -228,25 +265,45 @@ class DialogStepBuilder(
                             ?.editMessage(newEmbed)?.setActionRows(newActionRows)?.await()
                             ?: context.replyAsync(newEmbed) { setActionRows(newActionRows) }
 
-                        modal.lastMessage = message
+                        val event: ButtonClickEvent
+                        val selectedOption: DialogStepModal.StepOption?
 
-                        if (options.isEmpty()) return StepModal.StepResult.GotoNext
+                        try {
+                            modal.lastMessage = message
 
-                        // TODO verify event IDs
-                        val event = messages.awaitFirstMatching {
-                            it is ButtonClickEvent
-                                    && it.channel.idLong == context.channel.idLong
-                                    && it.user.idLong == context.requester?.idLong
-                        } as ButtonClickEvent
+                            if (options.isEmpty()) return defaultResult
 
-                        val id = event.componentId.substringAfter(':')
-                        val selectedOption = options.firstOrNull { it.data == id }
+                            // TODO verify event IDs
+                            event = messages.awaitFirstMatching {
+                                it is ButtonClickEvent
+                                        && it.channel.idLong == context.channel.idLong
+                                        && it.user.idLong == context.requester?.idLong
+                            } as ButtonClickEvent
 
-                        event.deferEdit().await()
+                            event.deferEdit().await()
+
+                            val id = event.componentId.substringAfter(':')
+                            selectedOption = options.firstOrNull { it.data == id }
+                        } finally {
+                            val oldEmbed = message.embeds.first()
+
+                            val expiredEmbed = EmbedBuilder(oldEmbed)
+                                .apply {
+                                    val prefix = "🔒 "
+                                    val postfix = " (expired)"
+                                    val oldTitle =
+                                        (oldEmbed.title ?: "Dialog").take(256 - prefix.length - postfix.length)
+                                    setTitle("$prefix$oldTitle$postfix")
+                                }
+                                .build()
+                            message.editMessage(
+                                MessageBuilder(message).setEmbed(expiredEmbed).build()
+                            ).setActionRows(emptyList()).await()
+                        }
 
                         if (selectedOption == null) return StepModal.StepResult.Invalid
                         else {
-                            val result = onComplete(selectedOption, event)
+                            val result = onComplete(selectedOption, selectedOption.text, event)
                             return result
                         }
                     }

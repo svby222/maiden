@@ -48,8 +48,11 @@ object Modals : Module {
         return scope.launch {
             try {
                 modal.start(context, dataChannel)
+            } catch (e: CancellationException) {
+                // TODO ignore
+                throw e
             } catch (e: Exception) {
-                e.printStackTrace()
+                throw e
             } finally {
                 activeModals.remove(channel.idLong)
             }

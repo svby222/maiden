@@ -3,6 +3,7 @@ package bot.maiden.modules.modal
 import bot.maiden.CommandContext
 import bot.maiden.await
 import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.withTimeout
 import net.dv8tion.jda.api.events.GenericEvent
 
 open class StepModal(val steps: List<Step>) {
@@ -28,29 +29,35 @@ open class StepModal(val steps: List<Step>) {
         var currentStep = steps.first()
 
         while (true) {
-            val result = currentStep.accept(context, this, messages)
+            val shouldBreak = withTimeout(20000L) {
+                val result = currentStep.accept(context, this@StepModal, messages)
 
-            when (result) {
-                StepResult.Cancel -> {
-                    context.channel.sendMessage("Canceled").await()
-                    break
-                }
-                StepResult.Finish -> break
-                StepResult.GotoNext -> {
-                    // TODO error handling
-                    val currentIndex = steps.lastIndexOf(currentStep)
-                    if (currentIndex == steps.lastIndex) break
+                when (result) {
+                    StepResult.Cancel -> {
+                        context.channel.sendMessage("Canceled").await()
+                        return@withTimeout true
+                    }
+                    StepResult.Finish -> return@withTimeout true
+                    StepResult.GotoNext -> {
+                        // TODO error handling
+                        val currentIndex = steps.lastIndexOf(currentStep)
+                        if (currentIndex == steps.lastIndex) return@withTimeout true
 
-                    currentStep = steps[currentIndex + 1]
+                        currentStep = steps[currentIndex + 1]
+                    }
+                    StepResult.GotoCurrent -> Unit
+                    is StepResult.GotoIndex -> currentStep = steps[result.index]
+                    is StepResult.GotoStep -> currentStep = result.step
+                    StepResult.Invalid -> {
+                        context.channel.sendMessage("Invalid response").await()
+                        return@withTimeout false
+                    }
                 }
-                StepResult.GotoCurrent -> Unit
-                is StepResult.GotoIndex -> currentStep = steps[result.index]
-                is StepResult.GotoStep -> currentStep = result.step
-                StepResult.Invalid -> {
-                    context.channel.sendMessage("Invalid response").await()
-                    continue
-                }
+
+                false
             }
+
+            if (shouldBreak) break
         }
     }
 }

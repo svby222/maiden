@@ -39,7 +39,7 @@ object Test : Module {
                         option(DialogStepModal.StepOption("Option 1", data = "A"))
                         option(DialogStepModal.StepOption("Option 2", data = "B"))
 
-                        onComplete { option, _ ->
+                        onComplete { option, _, _ ->
                             selected = option.data.toString()
 
                             StepModal.StepResult.GotoNext
@@ -72,7 +72,7 @@ object Test : Module {
                         option(DialogStepModal.StepOption("Option 1", icon = Emoji.fromMarkdown("🅰️"), data = "A"))
                         option(DialogStepModal.StepOption("Option 2", icon = Emoji.fromMarkdown("🅱️"), data = "B"))
 
-                        onComplete { option, _ ->
+                        onComplete { option, _, _ ->
                             selected = option.data.toString()
 
                             StepModal.StepResult.GotoNext
@@ -111,7 +111,7 @@ object Test : Module {
 
                         mainText = chunks[chunkIndex].joinToString("\n", prefix = "```\n", postfix = "\n```")
 
-                        onComplete { option, _ ->
+                        onComplete { option, _, _ ->
                             when (option) {
                                 previous -> {
                                     chunkIndex = max(0, chunkIndex - 1)
