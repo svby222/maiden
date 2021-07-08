@@ -10,6 +10,13 @@ interface ArgumentConverter<in From : Any, out To : Any> {
     val toType: KClass<out To>
 
     suspend fun convert(from: From): Result<To>
+
+    object ToString : ArgumentConverter<Any, String> {
+        override val fromType get() = Any::class
+        override val toType get() = String::class
+
+        override suspend fun convert(from: Any) = Result.success(from.toString())
+    }
 }
 
 class ConversionSet {
@@ -36,6 +43,9 @@ class ConversionSet {
     ) = addConverter(From::class, To::class, converter, priority)
 
     fun getConverterList(fromType: KClass<*>, toType: KClass<*>): List<Pair<ArgumentConverter<*, *>, Int>>? {
+        // Fixed toString implementation
+        if (toType == String::class) return listOf(Pair(ArgumentConverter.ToString, 0))
+
         // TODO: currently, this performs DFS; another algorithm + caching may be more effective (i.e. Johnson)
         // TODO: cache results?
 
