@@ -4,6 +4,11 @@ import bot.maiden.*
 import bot.maiden.common.ArgumentConverter
 import bot.maiden.common.baseEmbed
 import bot.maiden.modules.Common.COMMAND_PARAMETER_PREDICATE
+import bot.maiden.modules.modal.DialogStepModal
+import bot.maiden.modules.modal.Modals
+import bot.maiden.modules.modal.StepModal
+import bot.maiden.modules.modal.buildDialog
+import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
@@ -13,6 +18,8 @@ import java.math.BigInteger
 import java.time.Duration
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.hasAnnotation
 import kotlin.reflect.jvm.jvmErasure
@@ -253,25 +260,63 @@ object Administration : Module {
     )
     suspend fun commands(context: CommandContext) {
         // TODO char limit
-        context.replyAsync(
-            baseEmbed(context)
-                .setTitle("List of commands")
-                .setThumbnail(context.jda.selfUser.avatarUrl)
-                .apply {
-                    setDescription(
-                        buildString {
-                            for ((_, function) in context.commands) {
-                                val annotation = function.findAnnotation<Command>() ?: continue
-                                if (annotation.hidden) continue
+        val commands = context.commands
+            .filterNot { it.function.findAnnotation<Command>()?.hidden == true }
+            .groupBy { it.name }
+            .mapValues { it.value.size }
+            .toList()
+        val chunks = commands.chunked(20)
 
-                                appendLine("`${function.name}`")
+        var chunkIndex = 0
+
+        val modal = buildDialog {
+            title = "List of commands"
+
+            addStep(dynamic = true) {
+                replacePrevious = true
+
+                val previous = option(
+                    DialogStepModal.StepOption("Previous", icon = Emoji.fromMarkdown("⬅️"), data = "previous")
+                )
+                val next =
+                    option(
+                        DialogStepModal.StepOption("Next", icon = Emoji.fromMarkdown("➡️"), data = "next")
+                    )
+
+                mainText = "Use `m!help [command-name]` for information on specific commands."
+
+                editEmbed {
+                    setThumbnail(context.jda.selfUser.avatarUrl)
+                    addField("Command prefix", "`m!`", true)
+
+                    addField(
+                        "Commands (page ${chunkIndex + 1} of ${chunks.size})",
+                        chunks[chunkIndex].joinToString("\n") {
+                            buildString {
+                                append("`${it.first}`")
+                                if (it.second > 1) append(" (${it.second})")
                             }
-                        }
+                        },
+                        false
                     )
                 }
-                .addField("Command prefix", "`m!`", true)
-                .build()
-        )
+
+                onComplete { option, _, _ ->
+                    when (option) {
+                        previous -> {
+                            chunkIndex = max(0, chunkIndex - 1)
+                        }
+                        next -> {
+                            chunkIndex = min(chunks.lastIndex, chunkIndex + 1)
+                        }
+                    }
+
+                    StepModal.StepResult.GotoCurrent
+                }
+            }
+        }
+
+        Modals.beginModal(context.channel, context, modal).await()
     }
 
     @Command(hidden = true)
