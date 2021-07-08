@@ -20,7 +20,6 @@ fun main(args: Array<String>) {
     bot.addModules(
         listOf(
             Modals,
-            Dialog,
 
             Administration,
             Schedule,
