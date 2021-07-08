@@ -27,6 +27,7 @@ fun main(args: Array<String>) {
             Inspirobot,
             Goodreads,
             Horoscope,
+            Media,
 
             Phone,
             Dectalk,
