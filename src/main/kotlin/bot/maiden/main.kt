@@ -31,6 +31,7 @@ fun main(args: Array<String>) {
 
             Phone,
             Dectalk,
+            Fun,
 
             Test,
         )

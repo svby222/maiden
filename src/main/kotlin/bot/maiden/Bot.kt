@@ -19,6 +19,7 @@ import net.dv8tion.jda.api.events.ReadyEvent
 import net.dv8tion.jda.api.events.guild.GuildJoinEvent
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
+import net.dv8tion.jda.api.requests.GatewayIntent
 import org.slf4j.LoggerFactory
 import java.lang.reflect.InvocationTargetException
 import java.util.*
@@ -113,6 +114,7 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
         this.database = Database(config).also { it.init() }
 
         this.jda = JDABuilder.createDefault(token)
+            .enableIntents(GatewayIntent.GUILD_MEMBERS)
             .addEventListeners(object : EventListener {
                 override fun onEvent(event: GenericEvent) {
                     scope.launch { this@Bot.onEvent(event) }

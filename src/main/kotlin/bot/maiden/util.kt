@@ -2,6 +2,7 @@ package bot.maiden
 
 import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.requests.RestAction
+import net.dv8tion.jda.api.utils.concurrent.Task
 import java.net.URLEncoder
 import java.time.Duration
 import kotlin.coroutines.resume
@@ -10,6 +11,11 @@ import kotlin.coroutines.suspendCoroutine
 
 suspend fun <T> RestAction<T>.await() = suspendCoroutine<T> { cont ->
     queue({ cont.resume(it) }, { cont.resumeWithException(it) })
+}
+
+suspend fun <T> Task<T>.await() = suspendCoroutine<T> { cont ->
+    onSuccess { cont.resume(it) }
+    onError { cont.resumeWithException(it) }
 }
 
 fun filterLatin(text: String) = text.replace(Regex("\\P{InBasic_Latin}"), "")
