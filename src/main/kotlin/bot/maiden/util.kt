@@ -46,3 +46,7 @@ suspend inline fun <T> ReceiveChannel<T>.awaitFirstMatching(predicate: (T) -> Bo
 
     throw NoSuchElementException("No element matching the given predicate was received, or ReceiveChannel was closed")
 }
+
+fun Int.pluralize(singular: String, plural: String = singular + "s"): String {
+    return if (this == 1) singular else plural
+}
