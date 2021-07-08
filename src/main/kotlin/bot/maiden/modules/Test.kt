@@ -53,8 +53,7 @@ object Test : Module {
                     }
                 }
 
-                Modals.beginModal(context.channel, context, modal)
-                    .join()
+                Modals.beginModal(context.channel, context, modal).await()
             }
             "dialog2" -> {
                 val modal = buildDialog {
@@ -86,8 +85,7 @@ object Test : Module {
                     }
                 }
 
-                Modals.beginModal(context.channel, context, modal)
-                    .join()
+                Modals.beginModal(context.channel, context, modal).await()
             }
             "paginate1" -> {
                 val items = (1..100).toList()
@@ -126,8 +124,7 @@ object Test : Module {
                     }
                 }
 
-                Modals.beginModal(context.channel, context, modal)
-                    .join()
+                Modals.beginModal(context.channel, context, modal).await()
             }
             else -> context.replyAsync("That test doesn't exist!")
         }

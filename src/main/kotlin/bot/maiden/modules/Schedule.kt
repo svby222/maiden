@@ -228,8 +228,7 @@ object Schedule : Module {
             }
         }
 
-        Modals.beginModal(context.channel, context, dialog)
-            .join()
+        Modals.beginModal(context.channel, context, dialog).await()
     }
 
     @Command
@@ -420,7 +419,7 @@ object Schedule : Module {
             }
         }
 
-        Modals.beginModal(context.channel, context, dialog).join()
+        Modals.beginModal(context.channel, context, dialog).await()
     }
 
     override fun close() {

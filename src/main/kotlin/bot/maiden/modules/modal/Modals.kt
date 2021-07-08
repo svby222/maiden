@@ -23,11 +23,11 @@ object Modals : Module {
 
     private val activeModals = ConcurrentHashMap<Long, ModalData>()
 
-    fun beginModal(channel: MessageChannel, context: CommandContext, modal: StepModal): Job {
+    fun beginModal(channel: MessageChannel, context: CommandContext, modal: StepModal): Deferred<Unit> {
         // TODO error: require requester?
         context.requester!!
 
-        if (modal.steps.isEmpty()) return Job().apply { complete() }
+        if (modal.steps.isEmpty()) return CompletableDeferred(Unit)
 
         val dataChannel = Channel<GenericEvent>()
         val data = ModalData(
@@ -40,17 +40,16 @@ object Modals : Module {
             // There is already an active modal in this channel
             dataChannel.close()
 
-            return Job().apply {
+            return CompletableDeferred<Unit>().apply {
                 completeExceptionally(IllegalStateException("There is already an active modal for channel ${channel.idLong}"))
             }
         }
 
-        return scope.launch {
+        return scope.async {
             try {
                 modal.start(context, dataChannel)
             } catch (e: CancellationException) {
                 // TODO ignore
-                throw e
             } catch (e: Exception) {
                 throw e
             } finally {
