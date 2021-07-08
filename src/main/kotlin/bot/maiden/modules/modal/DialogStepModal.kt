@@ -14,6 +14,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.interactions.components.ActionRow
 import net.dv8tion.jda.api.interactions.components.Button
 import net.dv8tion.jda.api.interactions.components.ButtonStyle
+import kotlin.coroutines.cancellation.CancellationException
 
 class DialogStepModal(
     val title: String,
@@ -125,6 +126,16 @@ class DialogStepBuilder(
         return option
     }
 
+    // TODO make this less convoluted
+    private fun shouldShowOption(
+        options: List<DialogStepModal.StepOption>,
+        option: DialogStepModal.StepOption
+    ): Boolean {
+        return option.data != DialogStepModal.StepOption.CancelData
+                && !(options.singleOrNull { it.data != DialogStepModal.StepOption.CancelData } == option
+                && option.data == DialogStepModal.StepOption.FreeInputData)
+    }
+
     fun buildStatic(): DialogStepModal.DialogStep {
         val onComplete = this.onComplete
 
@@ -147,16 +158,23 @@ class DialogStepBuilder(
                             .setDescription(mainText)
                             .apply(embedAdapter)
                             .apply {
-                                if (!(optionsText.isNullOrBlank() && options.isEmpty())) {
+                                val displayOptions = options.filter { shouldShowOption(options, it) }
+
+                                if (!(optionsText.isNullOrBlank() && displayOptions.isEmpty())) {
                                     val parts = listOfNotNull(
                                         optionsText,
-                                        options.takeIf { it.isNotEmpty() }
+                                        displayOptions.takeIf { it.isNotEmpty() }
                                             ?.map { " •  ${it.text}" }
                                             ?.joinToString("\n")
                                     )
                                     if (parts.isNotEmpty()) {
                                         addField("Options", parts.joinToString("\n\n"), false)
                                     }
+                                }
+                            }
+                            .apply {
+                                options.firstOrNull { it.data == DialogStepModal.StepOption.CancelData }?.let {
+                                    setFooter("Type \"${it.text}\" to cancel.")
                                 }
                             }
                             .build()
@@ -184,6 +202,9 @@ class DialogStepBuilder(
                                 if (freeInputOption == null) StepModal.StepResult.Invalid
                                 else onComplete(freeInputOption, event.message.contentRaw, event)
                             } else {
+                                if (selectedOption.data == DialogStepModal.StepOption.CancelData)
+                                    throw CancellationException("Cancellation requested by user")
+
                                 onComplete(selectedOption, event.message.contentRaw, event)
                             }
                             return result
@@ -303,6 +324,9 @@ class DialogStepBuilder(
 
                         if (selectedOption == null) return StepModal.StepResult.Invalid
                         else {
+                            if (selectedOption.data == DialogStepModal.StepOption.CancelData)
+                                throw CancellationException("Cancellation requested by user")
+
                             val result = onComplete(selectedOption, selectedOption.text, event)
                             return result
                         }
