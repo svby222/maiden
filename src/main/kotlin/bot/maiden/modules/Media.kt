@@ -40,6 +40,7 @@ object Media : Module {
         "https://www.youtube.com/watch?v=VtlEwODlClg",
         "https://www.youtube.com/watch?v=zpoEjahjUyE",
         "https://www.youtube.com/watch?v=UkiYyECm2uQ",
+        "https://www.youtube.com/watch?v=WPNUQsLYkn0",
     )
 
     @Command
