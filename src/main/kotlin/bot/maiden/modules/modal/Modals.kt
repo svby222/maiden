@@ -41,7 +41,14 @@ object Modals : Module {
             dataChannel.close()
 
             return CompletableDeferred<Unit>().apply {
-                completeExceptionally(IllegalStateException("There is already an active modal for channel ${channel.idLong}"))
+                completeExceptionally(
+                    IllegalStateException(
+                        """
+                    There is already an active dialog in channel <#${channel.idLong}>.
+                    Cancel it or wait for it to expire before attempting to open another.
+                """.trimIndent()
+                    )
+                )
             }
         }
 
