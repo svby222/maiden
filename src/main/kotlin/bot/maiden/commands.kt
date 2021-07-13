@@ -18,9 +18,17 @@ annotation class Command(
 )
 
 annotation class HelpText(
-    val summary: String,
+    val description: String,
+    val summary: String = "",
     val group: String = ""
 )
+
+val HelpText.displaySummary: String
+    get() {
+        return summary.takeIf { it.isNotBlank() }
+            ?: description.split(Regex("\\.(?:\\s|$)")).firstOrNull()
+            ?: description
+    }
 
 interface Module : AutoCloseable {
     suspend fun initialize(bot: Bot) = Unit

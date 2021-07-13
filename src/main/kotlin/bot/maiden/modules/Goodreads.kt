@@ -17,7 +17,10 @@ object Goodreads : Module {
     val http = HttpClient.newHttpClient()
 
     @Command
-    @HelpText("Fetches a random quote from [Goodreads](https://www.goodreads.com/) with the specified tag.")
+    @HelpText(
+        summary = "Fetch a quote from Goodreads",
+        description = "Fetch a random quote from [Goodreads](https://www.goodreads.com/) with the specified tag."
+    )
     suspend fun quote(context: CommandContext, @JoinRemaining tag: String) {
         data class Quote(
             val text: String,

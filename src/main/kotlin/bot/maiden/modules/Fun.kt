@@ -8,7 +8,10 @@ import net.dv8tion.jda.api.entities.GuildChannel
 
 object Fun : Module {
     @Command
-    @HelpText("Selects a random user from the current channel.")
+    @HelpText(
+        summary = "Pick a random user",
+        description = "Select a random user from the current channel."
+    )
     suspend fun roulette(context: CommandContext, @Optional @JoinRemaining prize: String = "") {
         if (context.channel !is GuildChannel) return
 

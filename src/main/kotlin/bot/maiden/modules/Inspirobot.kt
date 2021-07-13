@@ -15,7 +15,10 @@ object Inspirobot : Module {
     val http = HttpClient.newHttpClient()
 
     @Command
-    @HelpText("Provides inspiration courtesy of [Inspirobot](https://inspirobot.me/).")
+    @HelpText(
+        summary = "Become inspired!",
+        description = "Provides inspiration courtesy of [Inspirobot](https://inspirobot.me/)."
+    )
     suspend fun inspire(context: CommandContext) {
         val url = http
             .sendAsync(

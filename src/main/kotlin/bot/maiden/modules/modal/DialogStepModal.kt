@@ -108,7 +108,7 @@ class DialogStepBuilder(
 
     val options: MutableList<DialogStepModal.StepOption> = mutableListOf()
 ) {
-    internal var embedAdapter: EmbedBuilder.() -> Unit = { Unit }
+    internal var embedAdapter: EmbedBuilder.(title: String) -> Unit = { Unit }
 
     internal var onComplete: suspend (DialogStepModal.StepOption, String, GenericEvent) -> StepModal.StepResult =
         { _, _, _ -> StepModal.StepResult.GotoNext }
@@ -117,7 +117,7 @@ class DialogStepBuilder(
         this.onComplete = action
     }
 
-    fun editEmbed(action: EmbedBuilder.() -> Unit) {
+    fun editEmbed(action: EmbedBuilder.(title: String) -> Unit) {
         this.embedAdapter = action
     }
 
@@ -150,13 +150,12 @@ class DialogStepBuilder(
                         modal as? DialogStepModal
                             ?: throw AssertionError("DialogStep must only be used with DialogStepModal")
 
+                        val generatedTitle = listOfNotNull(modal.title, this.title).joinToString(" / ")
+
                         val newEmbed = EmbedBuilder()
-                            .setTitle(
-                                listOfNotNull(modal.title, this.title)
-                                    .joinToString(" / ")
-                            )
+                            .setTitle(generatedTitle)
                             .setDescription(mainText)
-                            .apply(embedAdapter)
+                            .apply { embedAdapter(generatedTitle) }
                             .apply {
                                 val displayOptions = options.filter { shouldShowOption(options, it) }
 
@@ -242,13 +241,12 @@ class DialogStepBuilder(
                         modal as? DialogStepModal
                             ?: throw AssertionError("DialogStep must only be used with DialogStepModal")
 
+                        val generatedTitle = listOfNotNull(modal.title, this.title).joinToString(" / ")
+
                         val newEmbed = EmbedBuilder()
-                            .setTitle(
-                                listOfNotNull(modal.title, this.title)
-                                    .joinToString(" / ")
-                            )
+                            .setTitle(generatedTitle)
                             .setDescription(mainText)
-                            .apply(embedAdapter)
+                            .apply { embedAdapter(generatedTitle) }
                             .apply {
                                 if (!useIcons) {
                                     optionsText?.let { addField("Options", optionsText, false) }

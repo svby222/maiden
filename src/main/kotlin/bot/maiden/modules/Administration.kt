@@ -12,6 +12,7 @@ import net.dv8tion.jda.api.entities.Emoji
 import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
+import net.dv8tion.jda.api.interactions.components.ButtonStyle
 import java.awt.Color
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -92,7 +93,7 @@ object Administration : Module {
     }
 
     @Command
-    @HelpText("Display the bot's invite link.")
+    @HelpText("Show the bot's invite link.")
     suspend fun invite(context: CommandContext) {
         context.replyAsync(
             baseEmbed(context)
@@ -107,7 +108,7 @@ object Administration : Module {
 
     @Command
     @HelpText(
-        "Display the bot information dialog.",
+        "Show the bot information dialog.",
         group = "basic"
     )
     suspend fun help(context: CommandContext) {
@@ -162,7 +163,7 @@ object Administration : Module {
 
     @Command
     @HelpText(
-        "Display an information dialog for the specified command.",
+        "Show help for the specified command.",
         group = "basic"
     )
     suspend fun help(context: CommandContext, command: String) {
@@ -220,7 +221,7 @@ object Administration : Module {
                         addField(
                             if (commands.size == 1) displayTitle
                             else "#${i + 1}: $displayTitle",
-                            command.helpText?.summary ?: "_No help text available._",
+                            command.helpText?.description ?: "_No help text available._",
                             false
                         )
 
@@ -243,7 +244,7 @@ object Administration : Module {
                             for (command in relatedFiltered) {
                                 append(createDisplayTitle(command))
                                 append(": ")
-                                command.helpText?.summary?.let { append(it) }
+                                command.helpText?.displaySummary?.let { append(it) }
                                 appendLine()
                             }
                         }, false)
@@ -255,17 +256,22 @@ object Administration : Module {
 
     @Command
     @HelpText(
-        "Display a list of all available commands.",
+        "Show a list of all available commands.",
         group = "basic"
     )
     suspend fun commands(context: CommandContext) {
         // TODO char limit
         val commands = context.commands
+            .asSequence()
             .filterNot { it.function.findAnnotation<Command>()?.hidden == true }
             .groupBy { it.name }
-            .mapValues { it.value.size }
             .toList()
-        val chunks = commands.chunked(20)
+            .sortedBy { it.first }
+            .map { it.second }
+            .flatten()
+            .toList()
+
+        val chunks = commands.chunked(15)
 
         var chunkIndex = 0
 
@@ -283,22 +289,35 @@ object Administration : Module {
                         DialogStepModal.StepOption("Next", icon = Emoji.fromMarkdown("➡️"), data = "next")
                     )
 
-                mainText = "Use `m!help [command-name]` for information on specific commands."
-
-                editEmbed {
-                    setThumbnail(context.jda.selfUser.avatarUrl)
-                    addField("Command prefix", "`m!`", true)
-
-                    addField(
-                        "Commands (page ${chunkIndex + 1} of ${chunks.size})",
-                        chunks[chunkIndex].joinToString("\n") {
-                            buildString {
-                                append("`${it.first}`")
-                                if (it.second > 1) append(" (${it.second})")
-                            }
-                        },
-                        false
+                val close =
+                    option(
+                        DialogStepModal.StepOption(
+                            "Close",
+                            icon = Emoji.fromMarkdown("❎"),
+                            buttonStyle = ButtonStyle.DANGER
+                        )
                     )
+
+                mainText = "**Use `m!help [command-name]` for information on how to use a specific command.**"
+
+                editEmbed { title ->
+                    setThumbnail(context.jda.selfUser.avatarUrl)
+                    addField("Command prefix", "`m!`", false)
+
+                    setTitle("${(title)} (page ${chunkIndex + 1} of ${chunks.size})")
+
+                    for (command in chunks[chunkIndex]) {
+                        val helpText = command.helpText?.displaySummary
+
+                        // TODO short/long text; just split for now
+                        val shortText = helpText?.split(Regex("\\.(?:\\s|$)"))?.firstOrNull()
+
+                        addField(
+                            "`${command.name}`",
+                            shortText,
+                            true
+                        )
+                    }
                 }
 
                 onComplete { option, _, _ ->
@@ -308,6 +327,10 @@ object Administration : Module {
                         }
                         next -> {
                             chunkIndex = min(chunks.lastIndex, chunkIndex + 1)
+                        }
+
+                        close -> {
+                            return@onComplete StepModal.StepResult.Finish
                         }
                     }
 

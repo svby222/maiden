@@ -22,7 +22,10 @@ object Tabletop : Module {
     private val ONE_HUNDRED = 100.toBigInteger()
 
     @Command
-    @HelpText("Roll the specified dice.\n`dice` should be a list of die rolls, like `6`, `5d6` or `d20`, separated by spaces.\nThe maximum number of total rolls is 100.")
+    @HelpText(
+        summary = "Roll some dice",
+        description = "Roll the specified dice.\n`dice` should be a list of die rolls, like `6`, `5d6` or `d20`, separated by spaces.\nThe maximum number of total rolls is 100."
+    )
     suspend fun roll(context: CommandContext, @JoinRemaining @Optional dice: String = "d6") {
         data class RollData(val count: BigInteger, val size: BigInteger)
 

@@ -71,7 +71,8 @@ object Phone : Module {
 
     @Command
     @HelpText(
-        "Call another server by using their assigned phone number.",
+        summary = "Call another server",
+        description = "Call another server by using their assigned phone number.",
         group = "phone"
     )
     suspend fun call(context: CommandContext, @JoinRemaining target: String) {
@@ -164,7 +165,8 @@ object Phone : Module {
 
     @Command
     @HelpText(
-        "Accept an incoming call from another server.",
+        summary = "Accept an incoming call",
+        description = "Accept an incoming call from another server.",
         group = "phone"
     )
     suspend fun pickup(context: CommandContext) {
@@ -185,7 +187,8 @@ object Phone : Module {
 
     @Command
     @HelpText(
-        "End a call, or decline an incoming call from another server.",
+        summary = "End or decline a call",
+        description = "End a call, or decline an incoming call from another server.",
         group = "phone"
     )
     suspend fun hangup(context: CommandContext) {
@@ -201,7 +204,8 @@ object Phone : Module {
 
     @Command
     @HelpText(
-        "Set the channel you wish to receive incoming calls in. Only available to server administrators.",
+        summary = "Set the channel used for incoming calls",
+        description = "Set the channel you wish to receive incoming calls in. Only available to server administrators.",
         group = "phone"
     )
     suspend fun `set-phone-channel`(context: CommandContext) {

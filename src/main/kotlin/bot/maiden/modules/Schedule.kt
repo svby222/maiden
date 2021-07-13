@@ -233,7 +233,8 @@ object Schedule : Module {
 
     @Command
     @HelpText(
-        "Clear all scheduled events in the current server. Only available to server administrators.",
+        summary = "Clear all scheduled events",
+        description = "Clear all scheduled events in the current server. Only available to server administrators.",
         group = "schedule"
     )
     suspend fun `clear-scheduled`(context: CommandContext) {
@@ -268,7 +269,8 @@ object Schedule : Module {
 
     @Command
     @HelpText(
-        "Displays a list of all scheduled events, with the option to delete individual events. Only available to server administrators.",
+        summary = "Displays an editable list of all scheduled events",
+        description = "Displays a list of all scheduled events, with the option to delete individual events. Only available to server administrators.",
         group = "schedule"
     )
     suspend fun scheduled(context: CommandContext) {
@@ -322,7 +324,6 @@ object Schedule : Module {
                         )
                     )
 
-                // TODO auto-close
                 val close =
                     option(
                         DialogStepModal.StepOption(
