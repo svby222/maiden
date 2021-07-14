@@ -163,7 +163,7 @@ class DialogStepBuilder(
                                     val parts = listOfNotNull(
                                         optionsText,
                                         displayOptions.takeIf { it.isNotEmpty() }
-                                            ?.map { " •  ${it.text}" }
+                                            ?.map { "•  ${it.text}" }
                                             ?.joinToString("\n")
                                     )
                                     if (parts.isNotEmpty()) {
@@ -255,7 +255,7 @@ class DialogStepBuilder(
                                         val parts = listOfNotNull(
                                             optionsText,
                                             options.takeIf { it.isNotEmpty() }
-                                                ?.map { " ${it.icon?.asMention ?: "•"}  ${it.text}" }
+                                                ?.map { "${it.icon?.asMention ?: "•"}  ${it.text}" }
                                                 ?.joinToString("\n")
                                         )
                                         if (parts.isNotEmpty()) {
