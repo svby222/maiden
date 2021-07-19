@@ -110,6 +110,7 @@ object Phone : Module {
         val targetNumber = PhoneNumber(target.filter { it in '0'..'9' })
         if (targetNumber.value.isBlank()) {
             context.replyAsync(":mobile_phone: That's not a valid number.")
+            return abort()
         } else {
             // Find guild
             val otherGuild = context.database.withSession {
