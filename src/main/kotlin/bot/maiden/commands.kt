@@ -205,9 +205,7 @@ suspend fun dispatch(
         .takeIf { it.isNotEmpty() }
         ?: run {
             context.replyAsync(
-                failureEmbed(context.jda)
-                    .appendDescription("No command with the name `${commandName}` was found")
-                    .build()
+                commandNotFoundEmbed(context, handlers, commandName)
             )
             return false
         }

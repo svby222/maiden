@@ -30,6 +30,8 @@ dependencies {
 
     implementation "org.postgresql:postgresql:42.2.20"
     implementation "org.hibernate:hibernate-core:5.4.31.Final"
+
+    implementation "info.debatty:java-string-similarity:2.0.0"
 }
 
 application {
