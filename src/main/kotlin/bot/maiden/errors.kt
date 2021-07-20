@@ -1,6 +1,7 @@
 package bot.maiden
 
 import bot.maiden.common.Arg
+import bot.maiden.common.failureEmbed
 import bot.maiden.modules.Administration
 import info.debatty.java.stringsimilarity.JaroWinkler
 import net.dv8tion.jda.api.entities.MessageEmbed

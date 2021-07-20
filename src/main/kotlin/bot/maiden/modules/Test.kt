@@ -1,6 +1,10 @@
 package bot.maiden.modules
 
-import bot.maiden.*
+import bot.maiden.Command
+import bot.maiden.CommandContext
+import bot.maiden.HelpText
+import bot.maiden.Module
+import bot.maiden.common.failureEmbed
 import bot.maiden.modules.modal.DialogStepModal
 import bot.maiden.modules.modal.Modals
 import bot.maiden.modules.modal.StepModal

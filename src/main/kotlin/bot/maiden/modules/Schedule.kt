@@ -1,6 +1,7 @@
 package bot.maiden.modules
 
 import bot.maiden.*
+import bot.maiden.common.failureEmbed
 import bot.maiden.model.GuildScheduledEvent
 import bot.maiden.modules.modal.DialogStepModal
 import bot.maiden.modules.modal.Modals

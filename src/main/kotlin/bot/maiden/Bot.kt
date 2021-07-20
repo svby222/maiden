@@ -3,6 +3,7 @@ package bot.maiden
 import bot.maiden.common.ArgumentConverter
 import bot.maiden.common.ConversionSet
 import bot.maiden.common.addPrimitiveConverters
+import bot.maiden.common.failureEmbed
 import bot.maiden.modules.Common.USER_MENTION_REGEX
 import com.typesafe.config.Config
 import kotlinx.coroutines.CoroutineScope

@@ -2,6 +2,7 @@ package bot.maiden.modules
 
 import bot.maiden.*
 import bot.maiden.common.baseEmbed
+import bot.maiden.common.failureEmbed
 import kotlinx.coroutines.future.await
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element

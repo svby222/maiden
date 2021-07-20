@@ -1,6 +1,7 @@
 package bot.maiden.modules
 
 import bot.maiden.*
+import bot.maiden.common.failureEmbed
 import bot.maiden.model.GuildData
 import bot.maiden.model.PhoneNumber
 import bot.maiden.modules.Common.GENERAL_MENTION_REGEX

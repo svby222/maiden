@@ -1,6 +1,7 @@
 package bot.maiden.modules
 
 import bot.maiden.*
+import bot.maiden.common.failureEmbed
 import java.math.BigInteger
 import kotlin.random.Random
 import kotlin.random.asJavaRandom
