@@ -15,7 +15,7 @@ fun commandNotFoundEmbed(
         .asSequence()
         .map { Pair(it, JARO_WINKLER.similarity(commandName, it.name)) }
         .filter { (_, similarity) -> similarity >= MIN_SUGGESTION_SIMILARITY }
-        .sortedBy { (_, similarity) -> similarity }
+        .sortedByDescending { (_, similarity) -> similarity }
         .map { (command, _) -> command.name }
         .distinct()
         .take(3)
