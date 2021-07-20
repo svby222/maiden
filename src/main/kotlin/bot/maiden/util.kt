@@ -50,3 +50,14 @@ suspend inline fun <T> ReceiveChannel<T>.awaitFirstMatching(predicate: (T) -> Bo
 fun Int.pluralize(singular: String, plural: String = singular + "s"): String {
     return if (this == 1) singular else plural
 }
+
+fun getPythonVersion(): String? {
+    val process = ProcessBuilder()
+        .command("python3", "--version")
+        .start()
+
+    val exitCode = process.waitFor()
+
+    return if (exitCode == 0) process.inputStream.bufferedReader().readText().trim()
+    else null
+}

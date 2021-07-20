@@ -38,6 +38,8 @@ class Bot private constructor(config: Config, private val token: String) : AutoC
     val config = config.withoutPath("maiden.core.discord.botToken")
     lateinit var database: Database
 
+    internal val pythonVersion = getPythonVersion()
+
     // TODO handle defaults properly (parent config)
     val isDebug by lazy {
         if (config.hasPath("maiden.core.debug")) config.getBoolean("maiden.core.debug")

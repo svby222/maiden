@@ -141,6 +141,7 @@ object Administration : Module {
                     "Environment information", """
                     Running on ${System.getProperty("os.name")} ${System.getProperty("os.version")}
                     Kotlin ${KotlinVersion.CURRENT} on JDK ${System.getProperty("java.version")}
+                    ${context.bot.pythonVersion ?: "Python not found"}
                     ${context.database.version ?: "Unknown database"}
 
                     **Uptime**: ${Duration.ofMillis(System.currentTimeMillis() - START_TIMESTAMP).toPrettyString()}
