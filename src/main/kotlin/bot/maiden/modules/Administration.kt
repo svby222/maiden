@@ -154,12 +154,45 @@ object Administration : Module {
         )
     }
 
-    // TODO configurability
-    private val typeNameMap = mapOf(
+    // TODO move these to a common utility file
+    val typeNameOverrides = mapOf(
         String::class to "text",
         BigInteger::class to "int",
         BigDecimal::class to "num",
     )
+
+    fun createDisplayTitle(command: Bot.RegisteredCommand): String {
+        val parameters = command.function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
+
+        return buildString {
+            append("`")
+            append("m!")
+            append(command.name)
+
+            if (parameters.isNotEmpty()) {
+                append(" ")
+                append(
+                    parameters
+                        .joinToString(" ") {
+                            buildString {
+                                append("[")
+
+                                append(it.name)
+                                append(": ")
+                                append(typeNameOverrides[it.type.jvmErasure] ?: it.type.jvmErasure.simpleName)
+
+                                if (it.hasAnnotation<JoinRemaining>()) append("+")
+                                if (it.hasAnnotation<Optional>()) append("?")
+
+                                append("]")
+                            }
+                        }
+                )
+            }
+
+            append("`")
+        }
+    }
 
     @Command
     @HelpText(
@@ -172,39 +205,6 @@ object Administration : Module {
         if (commands.isEmpty()) {
             context.replyAsync("That command doesn't seem to exist.")
             return
-        }
-
-        fun createDisplayTitle(command: Bot.RegisteredCommand): String {
-            val parameters = command.function.parameters.filter(COMMAND_PARAMETER_PREDICATE)
-
-            return buildString {
-                append("`")
-                append("m!")
-                append(command.name)
-
-                if (parameters.isNotEmpty()) {
-                    append(" ")
-                    append(
-                        parameters
-                            .joinToString(" ") {
-                                buildString {
-                                    append("[")
-
-                                    append(it.name)
-                                    append(": ")
-                                    append(typeNameMap[it.type.jvmErasure] ?: it.type.jvmErasure.simpleName)
-
-                                    if (it.hasAnnotation<JoinRemaining>()) append("+")
-                                    if (it.hasAnnotation<Optional>()) append("?")
-
-                                    append("]")
-                                }
-                            }
-                    )
-                }
-
-                append("`")
-            }
         }
 
         context.replyAsync(

@@ -224,18 +224,18 @@ suspend fun dispatch(
 
     when {
         bestMatches.isEmpty() -> {
-            context.replyAsync(
-                failureEmbed(context.jda)
-                    .appendDescription("No handler for command '$commandName' accepts the provided arguments.")
-                    .build()
-            )
+            context.replyAsync(noMatchingOverloadEmbed(context, handlersFiltered, commandName, converted))
             return false
         }
         bestMatches.size > 1 -> {
             context.replyAsync(
-                failureEmbed(context.jda)
-                    .appendDescription("Overload resolution failed; multiple handlers would accept the provided arguments with match score ${bestMatchesEntry?.key}")
-                    .build()
+                multipleMatchingOverloadsEmbed(
+                    context,
+                    handlersFiltered,
+                    commandName,
+                    converted,
+                    bestMatchesEntry?.key ?: -1
+                )
             )
             return false
         }
