@@ -34,6 +34,11 @@ dependencies {
     implementation "info.debatty:java-string-similarity:2.0.0"
 }
 
+processResources {
+    from("praw_wrapper/main.py")
+    rename("main.py", "praw_wrapper.py")
+}
+
 application {
     mainClass = "bot.maiden.MainKt"
 }
