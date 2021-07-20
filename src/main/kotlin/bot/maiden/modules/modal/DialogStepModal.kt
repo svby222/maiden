@@ -3,6 +3,7 @@ package bot.maiden.modules.modal
 import bot.maiden.CommandContext
 import bot.maiden.await
 import bot.maiden.awaitFirstMatching
+import bot.maiden.common.baseEmbed
 import kotlinx.coroutines.channels.ReceiveChannel
 import net.dv8tion.jda.api.EmbedBuilder
 import net.dv8tion.jda.api.MessageBuilder
@@ -152,9 +153,10 @@ class DialogStepBuilder(
 
                         val generatedTitle = listOfNotNull(modal.title, this.title).joinToString(" / ")
 
-                        val newEmbed = EmbedBuilder()
+                        val newEmbed = baseEmbed(context)
                             .setTitle(generatedTitle)
                             .setDescription(mainText)
+                            .setTimestamp(null)
                             .apply { embedAdapter(generatedTitle) }
                             .apply {
                                 val displayOptions = options.filter { shouldShowOption(options, it) }
@@ -243,9 +245,10 @@ class DialogStepBuilder(
 
                         val generatedTitle = listOfNotNull(modal.title, this.title).joinToString(" / ")
 
-                        val newEmbed = EmbedBuilder()
+                        val newEmbed = baseEmbed(context)
                             .setTitle(generatedTitle)
                             .setDescription(mainText)
+                            .setTimestamp(null)
                             .apply { embedAdapter(generatedTitle) }
                             .apply {
                                 if (!useIcons) {
