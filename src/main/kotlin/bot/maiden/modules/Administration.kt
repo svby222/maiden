@@ -13,7 +13,6 @@ import net.dv8tion.jda.api.entities.Guild
 import net.dv8tion.jda.api.entities.TextChannel
 import net.dv8tion.jda.api.entities.User
 import net.dv8tion.jda.api.interactions.components.ButtonStyle
-import java.awt.Color
 import java.math.BigDecimal
 import java.math.BigInteger
 import java.time.Duration
@@ -116,7 +115,6 @@ object Administration : Module {
 
         context.replyAsync(
             baseEmbed(context)
-                .setColor(Color.WHITE)
                 .setTitle("About ${context.jda.selfUser.name}")
                 .setImage("https://i.imgur.com/S4MOq1f.png")
                 .setDescription(
@@ -209,7 +207,6 @@ object Administration : Module {
 
         context.replyAsync(
             baseEmbed(context)
-                .setColor(Color.WHITE)
                 .setTitle("About $command")
                 .apply {
                     // TODO this is suboptimal; try caching on startup

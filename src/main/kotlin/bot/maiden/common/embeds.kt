@@ -15,6 +15,8 @@ fun baseEmbed(context: CommandContext?, adapters: EmbedDefaultAdapters = EmbedDe
     return EmbedBuilder()
         .apply {
             if (context != null) {
+                setColor(context.bot.embedColor)
+
                 val requesterName = context.requester?.asTag ?: "unknown user"
 
                 val (footer, avatarUser) = when (context.source) {

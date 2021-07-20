@@ -21,6 +21,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent
 import net.dv8tion.jda.api.hooks.EventListener
 import net.dv8tion.jda.api.requests.GatewayIntent
 import org.slf4j.LoggerFactory
+import java.awt.Color
 import java.lang.reflect.InvocationTargetException
 import java.util.*
 import kotlin.properties.Delegates
@@ -30,17 +31,29 @@ import kotlin.reflect.full.functions
 import kotlin.reflect.full.hasAnnotation
 
 private val DEFAULT_STATUS = "m!help"
+val DEFAULT_EMBED_COLOR = Color.WHITE
 
 class Bot private constructor(config: Config, private val token: String) : AutoCloseable {
     val config = config.withoutPath("maiden.core.discord.botToken")
     lateinit var database: Database
 
+    // TODO handle defaults properly (parent config)
     val isDebug by lazy {
         if (config.hasPath("maiden.core.debug")) config.getBoolean("maiden.core.debug")
         else false
     }
 
     val ownerId by lazy { config.getLong("maiden.core.ownerId") }
+    val embedColor: Color by lazy {
+        try {
+            if (config.hasPath("maiden.core.embedColor"))
+                Color.decode(config.getString("maiden.core.embedColor"))
+            else null
+        } catch (e: NumberFormatException) {
+            LOGGER.error("Error parsing embedColor", e)
+            null
+        } ?: DEFAULT_EMBED_COLOR
+    }
 
     var motd: String? by Delegates.observable(null) { _, _, value ->
         value?.let { jda.presence.activity = Activity.listening("$DEFAULT_STATUS | $it") }
